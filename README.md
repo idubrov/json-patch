@@ -1,7 +1,7 @@
-[![crates.io](https://img.shields.io/crates/v/lcd.svg)](https://crates.io/crates/lcd)
-[![crates.io](https://img.shields.io/crates/d/lcd.svg)](https://crates.io/crates/lcd)
-[![CircleCI](https://img.shields.io/circleci/project/github/idubrov/lcd.svg)](https://circleci.com/gh/idubrov/lcd)
-[![Codecov](https://img.shields.io/codecov/c/github/idubrov/lcd.svg)](https://codecov.io/gh/idubrov/lcd)
+[![crates.io](https://img.shields.io/crates/v/json-patch.svg)](https://crates.io/crates/json-patch)
+[![crates.io](https://img.shields.io/crates/d/json-patch.svg)](https://crates.io/crates/json-patch)
+[![CircleCI](https://img.shields.io/circleci/project/github/idubrov/json-patch.svg)](https://circleci.com/gh/idubrov/json-patch)
+[![Codecov](https://img.shields.io/codecov/c/github/idubrov/json-patch.svg)](https://codecov.io/gh/idubrov/json-patch)
 
 # json-patch
 
