@@ -1733,6 +1733,30 @@
     "error": "cannot move inside children"
   },
   {
+    "comment": "Can move into similar path",
+    "doc": {
+      "foo": {
+        "bar": {
+          "baz": true
+        }
+      }
+    },
+    "patch": [
+      {
+        "op": "move",
+        "path": "/foobar",
+        "from": "/foo"
+      }
+    ],
+    "expected": {
+      "foobar": {
+        "bar": {
+          "baz": true
+        }
+      }
+    }
+  },
+  {
     "comment": "Can move outside children",
     "doc": {
       "foo": {
@@ -1752,6 +1776,88 @@
       "foo": {
         "baz": true
       }
+    }
+  },
+  {
+    "comment": "Can move into root",
+    "doc": {
+      "foo": {
+        "bar": {
+          "baz": true
+        }
+      }
+    },
+    "patch": [
+      {
+        "op": "move",
+        "path": "",
+        "from": "/foo/bar"
+      }
+    ],
+    "expected": {
+      "baz": true
+    }
+  },
+  {
+    "comment": "cannot remove last",
+    "doc": {
+      "foo": [1, 2, 3]
+    },
+    "patch": [
+      {
+        "op": "remove",
+        "path": "/foo/-"
+      }
+    ],
+    "error": "invalid pointer"
+  },
+  {
+    "comment": "cannot copy from last",
+    "doc": {
+      "foo": [1, 2, 3]
+    },
+    "patch": [
+      {
+        "op": "copy",
+        "from": "/foo/-",
+        "path": "/bar"
+      }
+    ],
+    "error": "invalid pointer"
+  },
+  {
+    "comment": "can move into last element",
+    "doc": {
+      "foo": [1, 2, 3],
+      "bar": 4
+    },
+    "patch": [
+      {
+        "op": "move",
+        "from": "/bar",
+        "path": "/foo/-"
+      }
+    ],
+    "expected": {
+      "foo": [1, 2, 3, 4]
+    }
+  },
+  {
+    "comment": "can copy into last element",
+    "doc": {
+      "foo": [1, 2, 3],
+      "bar": 4
+    },
+    "patch": [
+      {
+        "op": "copy",
+        "from": "/bar",
+        "path": "/foo/-"
+      }
+    ],
+    "expected": {
+      "foo": [1, 2, 3, 4],
+      "bar": 4
     }
   }
 ]

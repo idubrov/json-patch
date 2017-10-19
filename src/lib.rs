@@ -7,41 +7,18 @@ extern crate serde_derive;
 extern crate serde_json;
 
 use serde_json::Value;
+use std::mem;
 
-use std::fmt;
-use std::error::Error;
+mod util;
+use util::{parse_index, split_pointer};
 
-/// This type represents all possible errors that can occur when applying JSON patch
-#[derive(Debug)]
-pub enum PatchError {
-    /// One of the paths in the patch is invalid
-    InvalidPointer,
+pub use util::PatchError;
 
-    /// 'test' operation failed
-    TestFailed
-}
 
-impl Error for PatchError {
-    fn description(&self) -> &str {
-        use PatchError::*;
-        match *self {
-            InvalidPointer => "invalid pointer",
-            TestFailed => "test failed"
-        }
-    }
-}
+/// Representation of JSON Patch (list of patch operations)
+pub type Patch = Vec<PatchOperation>;
 
-impl fmt::Display for PatchError {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(fmt)
-    }
-}
 
-type Result = std::result::Result<(), PatchError>;
-
-trait Operation {
-    fn apply_mut(&self, doc: &mut Value) -> Result;
-}
 
 /// JSON Patch 'add' operation representation
 #[derive(Debug, Deserialize, Clone)]
@@ -50,75 +27,10 @@ pub struct AddOperation {
     value: Value
 }
 
-fn parse_index(str: &str, len: usize) -> std::result::Result<usize, PatchError> {
-    // RFC 6901 prohibits leading zeroes in index
-    if str.starts_with('0') && str.len() != 1 {
-        return Err(PatchError::InvalidPointer)
-    }
-    match str.parse::<usize>() {
-        Ok(idx) if idx < len => Ok(idx),
-        Err(_) | Ok(_) => Err(PatchError::InvalidPointer)
-    }
-}
-
-impl Operation for AddOperation {
-    fn apply_mut(&self, doc: &mut Value) -> Result {
-        if self.path == "" {
-            *doc = self.value.clone();
-            return Ok(());
-        }
-
-        let (parent, last) = split_pointer(self.path.as_str())?;
-
-        let parent = doc.pointer_mut(parent)
-            .ok_or(PatchError::InvalidPointer)?;
-
-        let value = self.value.clone();
-        match *parent {
-            Value::Object(ref mut obj) => {
-                obj.insert(String::from(last), value);
-            }
-            Value::Array(ref mut arr) if last == "-" => {
-                arr.push(value);
-            },
-            Value::Array(ref mut arr) => {
-                let idx = parse_index(last.as_str(), arr.len() + 1)?;
-                arr.insert(idx, value);
-            }
-            _ => return Err(PatchError::InvalidPointer)
-        }
-        Ok(())
-    }
-}
-
 /// JSON Patch 'remove' operation representation
 #[derive(Debug, Deserialize, Clone)]
 pub struct RemoveOperation {
     path: String
-}
-
-impl Operation for RemoveOperation {
-    fn apply_mut(&self, doc: &mut Value) -> Result {
-        let (parent, last) = split_pointer(self.path.as_str())?;
-        let parent = doc.pointer_mut(parent)
-            .ok_or(PatchError::InvalidPointer)?;
-
-        match *parent {
-            Value::Object(ref mut obj) => {
-                if obj.remove(last.as_str()).is_none() {
-                    Err(PatchError::InvalidPointer)
-                } else {
-                    Ok(())
-                }
-            }
-            Value::Array(ref mut arr) => {
-                let idx = parse_index(last.as_str(), arr.len())?;
-                arr.remove(idx);
-                Ok(())
-            }
-            _ => Err(PatchError::InvalidPointer)
-        }
-    }
 }
 
 /// JSON Patch 'replace' operation representation
@@ -128,37 +40,11 @@ pub struct ReplaceOperation {
     value: Value
 }
 
-impl Operation for ReplaceOperation {
-    fn apply_mut(&self, doc: &mut Value) -> Result {
-        let val = doc
-            .pointer_mut(self.path.as_str())
-            .ok_or(PatchError::InvalidPointer)?;
-        *val = self.value.clone();
-        Ok(())
-    }
-}
-
 /// JSON Patch 'move' operation representation
 #[derive(Debug, Deserialize, Clone)]
 pub struct MoveOperation {
     from: String,
     path: String
-}
-
-impl Operation for MoveOperation {
-    fn apply_mut(&self, doc: &mut Value) -> Result {
-        // FIXME: more optimal implementation...
-        let value = doc
-            .pointer(self.from.as_str())
-            .ok_or(PatchError::InvalidPointer)?
-            .clone();
-
-        let remove = RemoveOperation { path: self.from.clone() };
-        remove.apply_mut(doc)?;
-        let add = AddOperation { path: self.path.clone(), value };
-        add.apply_mut(doc)?;
-        Ok(())
-    }
 }
 
 /// JSON Patch 'copy' operation representation
@@ -168,38 +54,11 @@ pub struct CopyOperation {
     path: String
 }
 
-impl Operation for CopyOperation {
-    fn apply_mut(&self, doc: &mut Value) -> Result {
-        let value = doc
-            .pointer(self.from.as_str())
-            .ok_or(PatchError::InvalidPointer)?
-            .clone();
-
-
-        let add = AddOperation { path: self.path.clone(), value };
-        add.apply_mut(doc)?;
-        Ok(())
-    }
-}
-
 /// JSON Patch 'test' operation representation
 #[derive(Debug, Deserialize, Clone)]
 pub struct TestOperation {
     path: String,
     value: Value
-}
-
-impl Operation for TestOperation {
-    fn apply_mut(&self, doc: &mut Value) -> Result {
-        let val = doc
-            .pointer(self.path.as_str())
-            .ok_or(PatchError::InvalidPointer)?;
-        if *val == self.value {
-            Ok(())
-        } else {
-            Err(PatchError::TestFailed)
-        }
-    }
 }
 
 /// JSON Patch single patch operation
@@ -221,47 +80,158 @@ pub enum PatchOperation {
     Test(TestOperation)
 }
 
-/// Representation of JSON Patch (list of patch operations)
-pub type Patch = Vec<PatchOperation>;
+// FIXME: don't take value, take ref? Otherwise, we clone too early...
+fn add(doc: &mut Value, path: &str, value: Value) -> Result<Option<Value>, PatchError> {
+    if path == "" {
+        return Ok(Some(mem::replace(doc, value)));
+    }
 
-fn split_pointer(pointer: &str) -> std::result::Result<(&str, String), PatchError> {
-    pointer.rfind('/')
-        .ok_or(PatchError::InvalidPointer)
-        .map(|idx| (&pointer[0..idx], pointer[idx + 1..].replace("~1", "/").replace("~0", "~")))
+    let (parent, last) = split_pointer(path)?;
+    let parent = doc.pointer_mut(parent)
+        .ok_or(PatchError::InvalidPointer)?;
+
+    match *parent {
+        Value::Object(ref mut obj) => {
+            Ok(obj.insert(String::from(last), value))
+        }
+        Value::Array(ref mut arr) if last == "-" => {
+            arr.push(value);
+            Ok(None)
+        }
+        Value::Array(ref mut arr) => {
+            let idx = parse_index(last.as_str(), arr.len() + 1)?;
+            arr.insert(idx, value);
+            Ok(None)
+        }
+        _ => Err(PatchError::InvalidPointer)
+    }
 }
 
+fn remove(doc: &mut Value, path: &str, allow_last: bool) -> Result<Value, PatchError> {
+    let (parent, last) = split_pointer(path)?;
+    let parent = doc.pointer_mut(parent)
+        .ok_or(PatchError::InvalidPointer)?;
 
-/// Patch provided JSON document (given as `serde_json::Value`) in place.
-/// Operation is *not* atomic, i.e, if any of the patch is failed, document is not reverted
-pub unsafe fn patch_unsafe(doc: &mut Value, patches: &[PatchOperation]) -> Result {
-    use PatchOperation::*;
-    for patch in patches {
-        match *patch {
-            Add(ref add) => add.apply_mut(doc)?,
-            Remove(ref remove) => remove.apply_mut(doc)?,
-            Replace(ref replace) => replace.apply_mut(doc)?,
-            Move(ref mov) => mov.apply_mut(doc)?,
-            Copy(ref copy) => copy.apply_mut(doc)?,
-            Test(ref test) => test.apply_mut(doc)?,
+    match *parent {
+        Value::Object(ref mut obj) => {
+            match obj.remove(last.as_str()) {
+                None => Err(PatchError::InvalidPointer),
+                Some(val) => Ok(val)
+            }
+        },
+        Value::Array(ref mut arr) if allow_last && last == "-" => {
+            Ok(arr.pop().unwrap())
+        },
+        Value::Array(ref mut arr) => {
+            let idx = parse_index(last.as_str(), arr.len())?;
+            Ok(arr.remove(idx))
         }
+        _ => Err(PatchError::InvalidPointer)
     }
-    Ok(())
+}
+
+fn replace(doc: &mut Value, path: &str, value: &Value) -> Result<Value, PatchError> {
+    let target = doc
+        .pointer_mut(path)
+        .ok_or(PatchError::InvalidPointer)?;
+    Ok(mem::replace(target, value.clone()))
+}
+
+fn mov(doc: &mut Value, from: &str, path: &str) -> Result<Option<Value>, PatchError> {
+    // Check we are not moving inside own child
+    if path.starts_with(from) && path[from.len()..].starts_with("/") {
+        return Err(PatchError::InvalidPointer);
+    }
+    let val = remove(doc, from, false)?; // FIXME: check...
+    add(doc, path, val)
+}
+
+fn copy(doc: &mut Value, from: &str, path: &str) -> Result<Option<Value>, PatchError> {
+    let source = doc
+        .pointer(from)
+        .ok_or(PatchError::InvalidPointer)?
+        .clone();
+    add(doc, path, source)
+}
+
+fn test(doc: &Value, path: &str, expected: &Value) -> Result<(), PatchError> {
+    let target = doc
+        .pointer(path)
+        .ok_or(PatchError::InvalidPointer)?;
+    if *target == *expected {
+        Ok(())
+    } else {
+        Err(PatchError::TestFailed)
+    }
 }
 
 /// Patch provided JSON document (given as `serde_json::Value`) in place.
 /// Operation is atomic, i.e, if any of the patch is failed, no modifications to the value are made.
-pub fn patch_mut(doc: &mut Value, patches: &[PatchOperation]) -> Result {
-    let mut copy: Value = doc.clone();
-    unsafe { patch_unsafe(&mut copy, patches)?; }
-    *doc = copy;
-    Ok(())
+pub fn patch_mut(doc: &mut Value, patches: &[PatchOperation]) -> Result<(), PatchError> {
+    match patches.split_first() {
+        None => Ok(()),
+        Some((patch, tail)) => {
+            use PatchOperation::*;
+            match *patch {
+                Add(ref op) => {
+                    let prev = add(doc, op.path.as_str(), op.value.clone())?;
+                    patch_mut(doc, tail).map_err(move |e| {
+                        match prev {
+                            None => remove(doc, op.path.as_str(), true).unwrap(),
+                            Some(v) => add(doc, op.path.as_str(), v).unwrap().unwrap()
+                        };
+                        e
+                    })
+                }
+                Remove(ref op) => {
+                    let prev = remove(doc, op.path.as_str(), false)?;
+                    patch_mut(doc, tail).map_err(move |e| {
+                        add(doc, op.path.as_str(), prev).unwrap().unwrap();
+                        e
+                    })
+                }
+                Replace(ref op) => {
+                    let prev = replace(doc, op.path.as_str(), &op.value)?;
+                    patch_mut(doc, tail).map_err(move |e| {
+                        add(doc, op.path.as_str(), prev).unwrap().unwrap();
+                        e
+                    })
+                }
+                Move(ref op) => {
+                    let prev = mov(doc, op.from.as_str(), op.path.as_str())?;
+                    patch_mut(doc, tail).map_err(move |e| {
+                        // FIXME: check "-" revert works!
+                        mov(doc, op.path.as_str(), op.from.as_str()).unwrap();
+                        if let Some(prev) = prev {
+                            add(doc, op.path.as_str(), prev).unwrap().unwrap();
+                        }
+                        e
+                    })
+                }
+                Copy(ref op) => {
+                    let prev = copy(doc, op.from.as_str(), op.path.as_str())?;
+                    patch_mut(doc, tail).map_err(move |e| {
+                        match prev {
+                            None => remove(doc, op.path.as_str(), true).unwrap(),
+                            Some(v) => add(doc, op.path.as_str(), v).unwrap().unwrap()
+                        };
+                        e
+                    })
+                }
+                Test(ref op) => {
+                    test(doc, op.path.as_str(), &op.value)?;
+                    patch_mut(doc, tail)
+                }
+            }
+        }
+    }
 }
 
 /// Patch provided JSON document (given as `serde_json::Value`) and return a new `serde_json::Value`
 /// representing patched document.
 pub fn patch(doc: &Value, patches: &[PatchOperation]) -> std::result::Result<Value, PatchError> {
     let mut copy = doc.clone();
-    unsafe { patch_unsafe(&mut copy, patches)?; }
+    patch_mut(&mut copy, patches)?;
     Ok(copy)
 }
 

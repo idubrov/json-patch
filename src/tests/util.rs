@@ -55,7 +55,7 @@ pub fn run_specs(path: &str) {
             Ok((inplace, imm)) => {
                 if let Some(ref error) = tc.error {
                     println!("expected to fail with '{}'", error);
-                    panic!("expected to fail");
+                    panic!("expected to fail, got document {:?}", inplace);
                 }
                 println!();
                 if let Some(expected) = tc.expected {

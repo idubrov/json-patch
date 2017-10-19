@@ -1,0 +1,60 @@
+[
+  {
+    "comment": "Can revert add (replace key)",
+    "doc": {
+      "foo": {
+        "bar": {
+          "baz": true
+        }
+      }
+    },
+    "patch": [
+      {
+        "op": "add",
+        "path": "/foo",
+        "value": false
+      },
+      {
+        "op": "remove",
+        "path": "/foo/bar"
+      }
+    ],
+    "error": "invalid pointer"
+  },
+  {
+    "comment": "Can revert add (insert into array)",
+    "doc": {
+      "foo": [1, 2, 3]
+    },
+    "patch": [
+      {
+        "op": "add",
+        "path": "/foo/1",
+        "value": false
+      },
+      {
+        "op": "remove",
+        "path": "/foo/bar"
+      }
+    ],
+    "error": "invalid pointer"
+  },
+  {
+    "comment": "Can revert add (insert last element into array)",
+    "doc": {
+      "foo": [1, 2, 3]
+    },
+    "patch": [
+      {
+        "op": "add",
+        "path": "/foo/-",
+        "value": false
+      },
+      {
+        "op": "remove",
+        "path": "/foo/bar"
+      }
+    ],
+    "error": "invalid pointer"
+  }
+]
