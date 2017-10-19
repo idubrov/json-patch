@@ -1617,5 +1617,71 @@
       }
     ],
     "error": "invalid pointer"
+  },
+  {
+    "comment": "Slashes in object keys",
+    "doc": {
+      "a/b": true
+    },
+    "patch": [
+      {
+        "op": "add",
+        "path": "/a~1b",
+        "value": false
+      }
+    ],
+    "expected": {
+      "a/b": false
+    }
+  },
+  {
+    "comment": "Slashes in parent object key",
+    "doc": {
+      "a/b": {
+        "foo": true
+      }
+    },
+    "patch": [
+      {
+        "op": "add",
+        "path": "/a~1b/foo",
+        "value": false
+      }
+    ],
+    "expected": {
+      "a/b": {
+        "foo": false
+      }
+    }
+  },
+  {
+    "comment": "Substitution order (add)",
+    "doc": {
+      "~1": true
+    },
+    "patch": [
+      {
+        "op": "add",
+        "path": "/~01",
+        "value": false
+      }
+    ],
+    "expected": {
+      "~1": false
+    }
+  },
+  {
+    "comment": "Substitution order (remove)",
+    "doc": {
+      "~1": true
+    },
+    "patch": [
+      {
+        "op": "remove",
+        "path": "/~01"
+      }
+    ],
+    "expected": {
+    }
   }
 ]

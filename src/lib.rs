@@ -57,6 +57,8 @@ impl Operation for AddOperation {
         }
 
         let (parent, last) = split_pointer(self.path.as_str())?;
+        let last: String = last.replace("~1", "/").replace("~0", "~");
+
         let parent = doc.pointer_mut(parent)
             .ok_or(PatchError::InvalidPointer)?;
 
@@ -90,12 +92,14 @@ pub struct RemoveOperation {
 impl Operation for RemoveOperation {
     fn apply_mut(&self, doc: &mut Value) -> Result {
         let (parent, last) = split_pointer(self.path.as_str())?;
+        let last: String = last.replace("~1", "/").replace("~0", "~");
+
         let parent = doc.pointer_mut(parent)
             .ok_or(PatchError::InvalidPointer)?;
 
         match *parent {
             Value::Object(ref mut obj) => {
-                if obj.remove(last).is_none() {
+                if obj.remove(&last).is_none() {
                     Err(PatchError::InvalidPointer)
                 } else {
                     Ok(())
