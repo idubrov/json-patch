@@ -6,8 +6,7 @@ mod generator;
 
 use self::test::Bencher;
 use self::rand::SeedableRng;
-use super::patch_unsafe;
-
+use super::{patch, patch_mut, patch_unsafe};
 
 #[test]
 fn tests() {
@@ -20,18 +19,53 @@ fn spec_tests() {
 }
 
 #[bench]
-fn bench_removes(b: &mut Bencher) {
-    let mut rng = rand::StdRng::new().unwrap();
-    rng.reseed(&[0]);
-    let params = generator::Params{ ..Default::default() };
+fn bench_add_removes(b: &mut Bencher) {
+    let mut rng = rand::StdRng::from_seed(&[0]);
+    let params = generator::Params { ..Default::default() };
     let doc = params.gen(&mut rng);
-    let paths: Vec<String> = (0..10).map(|_| generator::gen_path(&doc, &mut rng)).collect();
+    let patches = generator::gen_add_remove_patches(&doc, &mut rng, 10, 10);
+
+    b.iter(|| {
+        let mut doc = Ok(doc.clone());
+        for ref p in &patches {
+            // Patch immutable
+            doc = doc.and_then(|d| patch(&d, p));
+        }
+    });
+}
+
+
+#[bench]
+fn bench_add_removes_mut(b: &mut Bencher) {
+    let mut rng = rand::StdRng::from_seed(&[0]);
+    let params = generator::Params { ..Default::default() };
+    let doc = params.gen(&mut rng);
+    let patches = generator::gen_add_remove_patches(&doc, &mut rng, 10, 10);
+
+    b.iter(|| {
+        let mut doc = doc.clone();
+        let mut result = Ok(());
+        for ref p in &patches {
+            // Patch mutable
+            result = result.and_then(|_| patch_mut(&mut doc, p));
+        }
+    });
+}
+
+
+#[bench]
+fn bench_add_removes_unsafe(b: &mut Bencher) {
+    let mut rng = rand::StdRng::from_seed(&[0]);
+    let params = generator::Params { ..Default::default() };
+    let doc = params.gen(&mut rng);
+    let patches = generator::gen_add_remove_patches(&doc, &mut rng, 10, 10);
 
     b.iter(|| {
         let mut d = doc.clone();
-        for ref path in &paths {
-            let arr = [super::PatchOperation::Remove(super::RemoveOperation { path: (*path).clone() })];
-            unsafe { patch_unsafe(&mut d, &arr).unwrap(); }
+        let mut result = Ok(());
+        for ref p in &patches {
+            // Patch unsafe (mutable without rollback)
+            result = result.and_then(|_| unsafe { patch_unsafe(&mut d, p) });
         }
     });
 }

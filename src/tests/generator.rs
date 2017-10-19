@@ -1,6 +1,7 @@
 use serde_json::{Value, Map};
-use super::rand;
 use super::rand::Rng;
+use super::util;
+use super::super::{PatchOperation, RemoveOperation, AddOperation, Patch};
 
 pub struct Params {
     pub array_size: usize,
@@ -13,11 +14,11 @@ pub struct Params {
 impl Default for Params {
     fn default() -> Self {
         Params {
-            array_size: 5,
-            map_size: 5,
-            value_size: 1000,
-            depth: 10,
-            key_size: 100
+            array_size: 6,
+            map_size: 6,
+            value_size: 100,
+            depth: 8,
+            key_size: 20
         }
     }
 }
@@ -46,12 +47,16 @@ impl Params {
         if depth == 0 {
             rand_literal(rng, self.value_size)
         } else if rng.gen::<bool>() {
-            let vec: Vec<Value> = (0..rng.gen::<usize>() % self.array_size + 1)
+            // Generate random array
+            let len = (rng.gen::<usize>() % self.array_size) + 1;
+            let vec: Vec<Value> = (0..len)
                 .map(|_| self.gen_internal(depth - 1, rng))
                 .collect();
             Value::from(vec)
         } else {
-            let map: Map<String, Value> = (0..rng.gen::<usize>() % self.map_size + 1)
+            // Generate random object
+            let len = (rng.gen::<usize>() % self.map_size) + 1;
+            let map: Map<String, Value> = (0..len)
                 .map(|_| (rand_str(rng, self.key_size), self.gen_internal(depth - 1, rng)))
                 .collect();
             Value::from(map)
@@ -59,32 +64,17 @@ impl Params {
     }
 }
 
-fn gen_path_internal(value: &Value, rng: &mut rand::StdRng, path: &mut Vec<String>) {
-    let mut cur = value;
-    loop {
-        match *cur {
-            Value::Array(ref arr) => {
-                let pos = rng.gen::<usize>() % arr.len();
-                path.push(pos.to_string());
-                cur = &arr[pos];
-            },
-            Value::Object(ref map) => {
-                let pos = rng.gen::<usize>() % map.len();
-                let (key, _) = map.iter().skip(pos).next().unwrap();
-                path.push(key.clone());
-                cur = &map[key];
-            }
-            _ => return
+pub fn gen_add_remove_patches<R: Rng>(value: &Value, rnd: &mut R, patches: usize, operations: usize) -> Vec<Patch> {
+    let leafs = util::all_leafs(value);
+    let mut vec = Vec::new();
+    for _ in 0..patches {
+        let mut ops = Vec::new();
+        for _ in 0..operations {
+            let path = &rnd.choose(&leafs).unwrap();
+            ops.push(PatchOperation::Remove(RemoveOperation { path: (*path).clone() }));
+            ops.push(PatchOperation::Add(AddOperation { path: (*path).clone(), value: Value::Null }));
         }
+        vec.push(ops);
     }
-}
-
-pub fn gen_path(value: &Value, rng: &mut rand::StdRng) -> String {
-    let mut path = Vec::new();
-    gen_path_internal(value, rng, &mut path);
-    let take = rng.gen::<usize>() % (path.len() + 1);
-
-    let mut buf = String::new();
-    path.iter().take(take).for_each(|x| { buf.push('/'); buf += x; });
-    buf
+    vec
 }
