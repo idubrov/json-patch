@@ -46,12 +46,12 @@ impl Params {
         if depth == 0 {
             rand_literal(rng, self.value_size)
         } else if rng.gen::<bool>() {
-            let vec: Vec<Value> = (0..=rng.gen::<usize>() % self.array_size)
+            let vec: Vec<Value> = (0..rng.gen::<usize>() % self.array_size + 1)
                 .map(|_| self.gen_internal(depth - 1, rng))
                 .collect();
             Value::from(vec)
         } else {
-            let map: Map<String, Value> = (0..=rng.gen::<usize>() % self.map_size)
+            let map: Map<String, Value> = (0..rng.gen::<usize>() % self.map_size + 1)
                 .map(|_| (rand_str(rng, self.key_size), self.gen_internal(depth - 1, rng)))
                 .collect();
             Value::from(map)

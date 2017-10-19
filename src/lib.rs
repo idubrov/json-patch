@@ -1,6 +1,5 @@
 //! Library that implements [RFC 6902](https://tools.ietf.org/html/rfc6902), JavaScript Object Notation (JSON) Patch
 #![feature(test)]
-#![feature(inclusive_range_syntax)]
 #![deny(warnings)]
 #![warn(missing_docs)]
 #[macro_use]
