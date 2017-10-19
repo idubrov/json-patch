@@ -140,11 +140,11 @@ pub struct MoveOperation {
 
 impl Operation for MoveOperation {
     fn apply_mut(&self, doc: &mut Value) -> Result {
+        // FIXME: more optimal implementation...
         let value = doc
             .pointer(self.from.as_str())
             .ok_or(PatchError::InvalidPointer)?
             .clone();
-
 
         let remove = RemoveOperation { path: self.from.clone() };
         remove.apply_mut(doc)?;
