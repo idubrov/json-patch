@@ -56,9 +56,8 @@ fn parse_index(str: &str, len: usize) -> std::result::Result<usize, PatchError> 
         return Err(PatchError::InvalidPointer)
     }
     match str.parse::<usize>() {
-        Err(_) => Err(PatchError::InvalidPointer),
         Ok(idx) if idx < len => Ok(idx),
-        Ok(_) => Err(PatchError::InvalidPointer)
+        Err(_) | Ok(_) => Err(PatchError::InvalidPointer)
     }
 }
 
