@@ -1,14 +1,7 @@
-extern crate json_patch;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-
-use serde_json::Value;
-
-use json_patch::{patch, patch_mut, Patch};
-
+use super::super::{patch, patch_mut, Patch};
 use std::{io, fs};
+use serde_json;
+use serde_json::Value;
 
 #[derive(Debug, Deserialize)]
 struct TestCase {
@@ -38,7 +31,7 @@ fn run_case(doc: &Value, patches: Value) -> Result<(Value, Value), String> {
     Ok((actual, actual_imm))
 }
 
-fn run_specs(path: &str) {
+pub fn run_specs(path: &str) {
     let file = fs::File::open(path).unwrap();
     let buf = io::BufReader::new(file);
     let cases: Vec<TestCase> = serde_json::from_reader(buf).unwrap();
@@ -75,14 +68,4 @@ fn run_specs(path: &str) {
             }
         }
     }
-}
-
-#[test]
-fn tests() {
-    run_specs("specs/tests.json");
-}
-
-#[test]
-fn spec_tests() {
-    run_specs("specs/spec_tests.json");
 }

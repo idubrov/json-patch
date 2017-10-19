@@ -1,4 +1,6 @@
 //! Library that implements [RFC 6902](https://tools.ietf.org/html/rfc6902), JavaScript Object Notation (JSON) Patch
+#![feature(test)]
+#![feature(inclusive_range_syntax)]
 #![deny(warnings)]
 #![warn(missing_docs)]
 #[macro_use]
@@ -43,7 +45,7 @@ trait Operation {
 }
 
 /// JSON Patch 'add' operation representation
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct AddOperation {
     path: String,
     value: Value
@@ -92,7 +94,7 @@ impl Operation for AddOperation {
 }
 
 /// JSON Patch 'remove' operation representation
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct RemoveOperation {
     path: String
 }
@@ -122,7 +124,7 @@ impl Operation for RemoveOperation {
 }
 
 /// JSON Patch 'replace' operation representation
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct ReplaceOperation {
     path: String,
     value: Value
@@ -139,7 +141,7 @@ impl Operation for ReplaceOperation {
 }
 
 /// JSON Patch 'move' operation representation
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct MoveOperation {
     from: String,
     path: String
@@ -162,7 +164,7 @@ impl Operation for MoveOperation {
 }
 
 /// JSON Patch 'copy' operation representation
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct CopyOperation {
     from: String,
     path: String
@@ -183,7 +185,7 @@ impl Operation for CopyOperation {
 }
 
 /// JSON Patch 'test' operation representation
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct TestOperation {
     path: String,
     value: Value
@@ -203,7 +205,7 @@ impl Operation for TestOperation {
 }
 
 /// JSON Patch single patch operation
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "op")]
 #[serde(rename_all = "lowercase")]
 pub enum PatchOperation {
@@ -230,7 +232,10 @@ fn split_pointer(pointer: &str) -> std::result::Result<(&str, String), PatchErro
         .map(|idx| (&pointer[0..idx], pointer[idx + 1..].replace("~1", "/").replace("~0", "~")))
 }
 
-fn patch_internal(doc: &mut Value, patches: &[PatchOperation]) -> Result {
+
+/// Patch provided JSON document (given as `serde_json::Value`) in place.
+/// Operation is *not* atomic, i.e, if any of the patch is failed, document is not reverted
+pub unsafe fn patch_unsafe(doc: &mut Value, patches: &[PatchOperation]) -> Result {
     use PatchOperation::*;
     for patch in patches {
         match *patch {
@@ -249,7 +254,7 @@ fn patch_internal(doc: &mut Value, patches: &[PatchOperation]) -> Result {
 /// Operation is atomic, i.e, if any of the patch is failed, no modifications to the value are made.
 pub fn patch_mut(doc: &mut Value, patches: &[PatchOperation]) -> Result {
     let mut copy: Value = doc.clone();
-    patch_internal(&mut copy, patches)?;
+    unsafe { patch_unsafe(&mut copy, patches)?; }
     *doc = copy;
     Ok(())
 }
@@ -258,6 +263,9 @@ pub fn patch_mut(doc: &mut Value, patches: &[PatchOperation]) -> Result {
 /// representing patched document.
 pub fn patch(doc: &Value, patches: &[PatchOperation]) -> std::result::Result<Value, PatchError> {
     let mut copy = doc.clone();
-    patch_internal(&mut copy, patches)?;
+    unsafe { patch_unsafe(&mut copy, patches)?; }
     Ok(copy)
 }
+
+#[cfg(test)]
+mod tests;
