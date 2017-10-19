@@ -1,7 +1,6 @@
 //! Library that implements [RFC 6902](https://tools.ietf.org/html/rfc6902), JavaScript Object Notation (JSON) Patch
 #![deny(warnings)]
 #![warn(missing_docs)]
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
@@ -110,7 +109,7 @@ impl Operation for RemoveOperation {
                 arr.remove(idx as usize);
                 Ok(())
             }
-            _ => return Err(PatchError::InvalidPointer)
+            _ => Err(PatchError::InvalidPointer)
         }
     }
 }
