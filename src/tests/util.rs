@@ -1,4 +1,4 @@
-use super::super::{patch, patch_mut, Patch};
+use super::super::{patch, Patch};
 use std::{io, fs};
 use serde_json;
 use serde_json::Value;
@@ -15,21 +15,19 @@ struct TestCase {
     disabled: bool
 }
 
-fn run_case(doc: &Value, patches: Value) -> Result<(Value, Value), String> {
+fn run_case(doc: Value, patches: Value) -> Result<Value, String> {
     let patches: Patch = serde_json::from_value(patches)
         .map_err(|e| e.to_string())?;
     let mut actual = doc.clone();
 
-    // Run both patch variants (inplace and immutable one)
-    patch_mut(&mut actual, &patches)
+    // Patch and verify that in case of error document wasn't changed
+    patch(&mut actual, &patches)
         .map_err(|e| {
-            assert_eq!(*doc, actual, "no changes should be made to the original document");
+            assert_eq!(doc, actual, "no changes should be made to the original document");
             e
         })
         .map_err(|e| e.to_string())?;
-
-    let actual_imm = patch(doc, &patches).map_err(|e| e.to_string())?;
-    Ok((actual, actual_imm))
+    Ok(actual)
 }
 
 pub fn run_specs(path: &str) {
@@ -50,17 +48,15 @@ pub fn run_specs(path: &str) {
             continue;
         }
 
-
-        match run_case(&tc.doc, tc.patch) {
-            Ok((inplace, imm)) => {
+        match run_case(tc.doc, tc.patch) {
+            Ok(actual) => {
                 if let Some(ref error) = tc.error {
                     println!("expected to fail with '{}'", error);
-                    panic!("expected to fail, got document {:?}", inplace);
+                    panic!("expected to fail, got document {:?}", actual);
                 }
                 println!();
                 if let Some(expected) = tc.expected {
-                    assert_eq!(expected, inplace);
-                    assert_eq!(expected, imm);
+                    assert_eq!(expected, actual);
                 }
             },
             Err(err) => {

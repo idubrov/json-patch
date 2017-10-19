@@ -1826,6 +1826,20 @@
     "error": "invalid pointer"
   },
   {
+    "comment": "cannot move from last",
+    "doc": {
+      "foo": [1, 2, 3]
+    },
+    "patch": [
+      {
+        "op": "move",
+        "from": "/foo/-",
+        "path": "/bar"
+      }
+    ],
+    "error": "invalid pointer"
+  },
+  {
     "comment": "can move into last element",
     "doc": {
       "foo": [1, 2, 3],
