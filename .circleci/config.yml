@@ -1,0 +1,17 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: idubrov/rust-stm32:latest
+    environment:
+      - RUSTFLAGS: "-C link-dead-code"
+    steps:
+      - checkout
+      - run: cargo build
+      - run: cargo test
+      - run: cargo clippy
+      - run: cargo kcov
+      - run:
+          name: Uploading code coverage
+          command: |
+              bash <(curl -s https://codecov.io/bash)
