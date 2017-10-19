@@ -70,8 +70,8 @@ fn run_specs(path: &str) {
                 }
             },
             Err(err) => {
-                tc.error.expect("patch expected to succeed");
                 println!("failed with '{}'", err);
+                tc.error.expect("patch expected to succeed");
             }
         }
     }

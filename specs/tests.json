@@ -1683,5 +1683,75 @@
     ],
     "expected": {
     }
+  },
+  {
+    "comment": "Leading zeroes are not supported",
+    "doc": {
+      "foo": [1, 2, 3]
+    },
+    "patch": [
+      {
+        "op": "add",
+        "path": "/foo/002",
+        "value": 4
+      }
+    ],
+    "error": "invalid pointer"
+  },
+  {
+    "comment": "Useless move is fine",
+    "doc": {
+      "foo": [1, 2, 3]
+    },
+    "patch": [
+      {
+        "op": "move",
+        "path": "/foo",
+        "from": "/foo"
+      }
+    ],
+    "expected": {
+      "foo": [1, 2, 3]
+    }
+  },
+  {
+    "comment": "Cannot move inside children",
+    "doc": {
+      "foo": {
+        "bar": {
+          "baz": true
+        }
+      }
+    },
+    "patch": [
+      {
+        "op": "move",
+        "path": "/foo/bar",
+        "from": "/foo"
+      }
+    ],
+    "error": "cannot move inside children"
+  },
+  {
+    "comment": "Can move outside children",
+    "doc": {
+      "foo": {
+        "bar": {
+          "baz": true
+        }
+      }
+    },
+    "patch": [
+      {
+        "op": "move",
+        "path": "/foo",
+        "from": "/foo/bar"
+      }
+    ],
+    "expected": {
+      "foo": {
+        "baz": true
+      }
+    }
   }
 ]

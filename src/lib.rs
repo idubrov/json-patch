@@ -49,6 +49,18 @@ pub struct AddOperation {
     value: Value
 }
 
+fn parse_index(str: &str, len: usize) -> std::result::Result<usize, PatchError> {
+    // RFC 6901 prohibits leading zeroes in index
+    if str.starts_with('0') && str.len() != 1 {
+        return Err(PatchError::InvalidPointer)
+    }
+    match str.parse::<usize>() {
+        Err(_) => Err(PatchError::InvalidPointer),
+        Ok(idx) if idx < len => Ok(idx),
+        Ok(_) => Err(PatchError::InvalidPointer)
+    }
+}
+
 impl Operation for AddOperation {
     fn apply_mut(&self, doc: &mut Value) -> Result {
         if self.path == "" {
@@ -57,7 +69,6 @@ impl Operation for AddOperation {
         }
 
         let (parent, last) = split_pointer(self.path.as_str())?;
-        let last: String = last.replace("~1", "/").replace("~0", "~");
 
         let parent = doc.pointer_mut(parent)
             .ok_or(PatchError::InvalidPointer)?;
@@ -71,10 +82,7 @@ impl Operation for AddOperation {
                 arr.push(value);
             },
             Value::Array(ref mut arr) => {
-                let idx = last.parse::<usize>().map_err(|_| PatchError::InvalidPointer)?;
-                if idx > arr.len() {
-                    return Err(PatchError::InvalidPointer)
-                }
+                let idx = parse_index(last.as_str(), arr.len() + 1)?;
                 arr.insert(idx, value);
             }
             _ => return Err(PatchError::InvalidPointer)
@@ -92,25 +100,20 @@ pub struct RemoveOperation {
 impl Operation for RemoveOperation {
     fn apply_mut(&self, doc: &mut Value) -> Result {
         let (parent, last) = split_pointer(self.path.as_str())?;
-        let last: String = last.replace("~1", "/").replace("~0", "~");
-
         let parent = doc.pointer_mut(parent)
             .ok_or(PatchError::InvalidPointer)?;
 
         match *parent {
             Value::Object(ref mut obj) => {
-                if obj.remove(&last).is_none() {
+                if obj.remove(last.as_str()).is_none() {
                     Err(PatchError::InvalidPointer)
                 } else {
                     Ok(())
                 }
             }
             Value::Array(ref mut arr) => {
-                let idx = last.parse::<usize>().map_err(|_| PatchError::InvalidPointer)?;
-                if idx as usize >= arr.len() {
-                    return Err(PatchError::InvalidPointer);
-                }
-                arr.remove(idx as usize);
+                let idx = parse_index(last.as_str(), arr.len())?;
+                arr.remove(idx);
                 Ok(())
             }
             _ => Err(PatchError::InvalidPointer)
@@ -221,10 +224,10 @@ pub enum PatchOperation {
 /// Representation of JSON Patch (list of patch operations)
 pub type Patch = Vec<PatchOperation>;
 
-fn split_pointer(pointer: &str) -> std::result::Result<(&str, &str), PatchError> {
+fn split_pointer(pointer: &str) -> std::result::Result<(&str, String), PatchError> {
     pointer.rfind('/')
         .ok_or(PatchError::InvalidPointer)
-        .map(|idx| (&pointer[0..idx], &pointer[idx + 1..]))
+        .map(|idx| (&pointer[0..idx], pointer[idx + 1..].replace("~1", "/").replace("~0", "~")))
 }
 
 fn patch_internal(doc: &mut Value, patches: &[PatchOperation]) -> Result {
