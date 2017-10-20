@@ -6,6 +6,32 @@
 # json-patch
 
 Library that implements [RFC 6902](https://tools.ietf.org/html/rfc6902), JavaScript Object Notation (JSON) Patch
+## Examples
+Create and patch document:
+
+```rust
+#[macro_use]
+extern crate serde_json;
+extern crate json_patch;
+use json_patch::{patch, from_value};
+
+let mut doc = json!([
+    { "name": "Andrew" },
+    { "name": "Maxim" }
+]);
+
+let ops = from_value(json!([
+  { "op": "test", "path": "/0/name", "value": "Andrew" },
+  { "op": "add", "path": "/0/happy", "value": true }
+])).unwrap();
+
+patch(&mut doc, &ops).unwrap();
+assert_eq!(doc, json!([
+  { "name": "Andrew", "happy": true },
+  { "name": "Maxim" }
+]));
+
+```
 
 ## License
 

@@ -196,8 +196,9 @@ pub fn from_value(value: Value) -> Result<Patch, serde_json::Error> {
     Ok(Patch(patch))
 }
 
-/// Patch provided JSON document (given as `serde_json::Value`) in place.
-/// Application is atomic. If any of the patch is failed, all previous operations are reverted.
+/// Patch provided JSON document (given as `serde_json::Value`) in-place. If any of the patch is
+/// failed, all previous operations are reverted. In case of internal error resulting in panic,
+/// document might be left in inconsistent state.
 pub fn patch(doc: &mut Value, patch: &Patch) -> Result<(), PatchError> {
     apply_patches(doc, &patch.0)
 }
