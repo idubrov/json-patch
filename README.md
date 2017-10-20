@@ -22,12 +22,12 @@ let mut doc = json!([
     { "name": "Maxim" }
 ]);
 
-let patch = from_str(r#"[
+let p = from_str(r#"[
   { "op": "test", "path": "/0/name", "value": "Andrew" },
   { "op": "add", "path": "/0/happy", "value": true }
 ]"#).unwrap();
 
-patch(&mut doc, &patch).unwrap();
+patch(&mut doc, &p).unwrap();
 assert_eq!(doc, json!([
   { "name": "Andrew", "happy": true },
   { "name": "Maxim" }
