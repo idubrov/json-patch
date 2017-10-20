@@ -1,4 +1,4 @@
-use super::super::{patch, Patch};
+use super::super::{merge, patch, Patch};
 use std::{io, fs};
 use serde_json;
 use serde_json::Value;
@@ -12,20 +12,26 @@ struct TestCase {
     expected: Option<Value>,
     error: Option<String>,
     #[serde(default)]
-    disabled: bool
+    disabled: bool,
+    #[serde(default)]
+    merge: bool
 }
 
-fn run_case(doc: Value, patches: Value) -> Result<Value, String> {
-    let patches: Patch = serde_json::from_value(patches).map_err(|e| e.to_string())?;
+fn run_case(doc: Value, patches: Value, merge_patch: bool) -> Result<Value, String> {
     let mut actual = doc.clone();
+    if merge_patch {
+        merge(&mut actual, &patches);
+    } else {
+        let patches: Patch = serde_json::from_value(patches).map_err(|e| e.to_string())?;
 
-    // Patch and verify that in case of error document wasn't changed
-    patch(&mut actual, &patches)
-        .map_err(|e| {
-            assert_eq!(doc, actual, "no changes should be made to the original document");
-            e
-        })
-        .map_err(|e| e.to_string())?;
+        // Patch and verify that in case of error document wasn't changed
+        patch(&mut actual, &patches)
+            .map_err(|e| {
+                assert_eq!(doc, actual, "no changes should be made to the original document");
+                e
+            })
+            .map_err(|e| e.to_string())?;
+    }
     Ok(actual)
 }
 
@@ -47,7 +53,7 @@ pub fn run_specs(path: &str) {
             continue;
         }
 
-        match run_case(tc.doc, tc.patch) {
+        match run_case(tc.doc, tc.patch, tc.merge) {
             Ok(actual) => {
                 if let Some(ref error) = tc.error {
                     println!("expected to fail with '{}'", error);
@@ -57,7 +63,7 @@ pub fn run_specs(path: &str) {
                 if let Some(expected) = tc.expected {
                     assert_eq!(expected, actual);
                 }
-            },
+            }
             Err(err) => {
                 println!("failed with '{}'", err);
                 tc.error.expect("patch expected to succeed");
@@ -81,7 +87,7 @@ fn collect_leafs(value: &Value, prefix: &mut String, result: &mut Vec<String>) {
                 collect_leafs(val, prefix, result);
                 prefix.truncate(l);
             }
-        },
+        }
         Value::Object(ref map) => {
             for (key, val) in map.iter() {
                 let l = prefix.len();
@@ -89,9 +95,9 @@ fn collect_leafs(value: &Value, prefix: &mut String, result: &mut Vec<String>) {
                 collect_leafs(val, prefix, result);
                 prefix.truncate(l);
             }
-        },
+        }
         _ => {
-           result.push(prefix.clone());
+            result.push(prefix.clone());
         }
     }
 }

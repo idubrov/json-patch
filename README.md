@@ -5,9 +5,8 @@
 
 # json-patch
 
-JSON-Patch [RFC 6902](https://tools.ietf.org/html/rfc6902), JavaScript Object Notation (JSON) Patch implementation.
-
-JSON-Patch implementation based on `serde_json` crate.
+A [JSON Patch (RFC 6902)](https://tools.ietf.org/html/rfc6902) and
+[JSON Merge Patch (RFC 7396)](https://tools.ietf.org/html/rfc7396) implementation for Rust.
 
 ## Usage
 
@@ -18,7 +17,7 @@ json-patch = "*"
 ```
 
 ## Examples
-Create and patch document:
+Create and patch document using JSON Patch:
 
 ```rust
 #[macro_use]
@@ -44,6 +43,46 @@ assert_eq!(doc, json!([
   { "name": "Maxim" }
 ]));
 
+```
+
+Create and patch document using JSON Merge Patch:
+
+```rust
+#[macro_use]
+extern crate serde_json;
+extern crate json_patch;
+
+use json_patch::merge;
+
+let mut doc = json!({
+  "title": "Goodbye!",
+  "author" : {
+    "givenName" : "John",
+    "familyName" : "Doe"
+  },
+  "tags":[ "example", "sample" ],
+  "content": "This will be unchanged"
+});
+
+let patch = json!({
+  "title": "Hello!",
+  "phoneNumber": "+01-123-456-7890",
+  "author": {
+    "familyName": null
+  },
+  "tags": [ "example" ]
+});
+
+merge(&mut doc, &patch);
+assert_eq!(doc, json!({
+  "title": "Hello!",
+  "author" : {
+    "givenName" : "John"
+  },
+  "tags": [ "example" ],
+  "content": "This will be unchanged",
+  "phoneNumber": "+01-123-456-7890"
+}));
 ```
 
 ## License

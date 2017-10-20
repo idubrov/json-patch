@@ -70,6 +70,12 @@ fn revert_tests() {
     util::run_specs("specs/revert_tests.json");
 }
 
+#[test]
+fn merge_tests() {
+    util::run_specs("specs/merge_tests.json");
+}
+
+
 #[bench]
 fn bench_add_removes(b: &mut Bencher) {
     let mut rng = rand::StdRng::from_seed(&[0]);

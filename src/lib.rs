@@ -1,6 +1,5 @@
-//! JSON-Patch [RFC 6902](https://tools.ietf.org/html/rfc6902), JavaScript Object Notation (JSON) Patch implementation.
-//!
-//! JSON-Patch implementation based on `serde_json` crate.
+//! A [JSON Patch (RFC 6902)](https://tools.ietf.org/html/rfc6902) and
+//! [JSON Merge Patch (RFC 7396)](https://tools.ietf.org/html/rfc7396) implementation for Rust.
 //!
 //! # Usage
 //!
@@ -11,7 +10,7 @@
 //! ```
 //!
 //! # Examples
-//! Create and patch document:
+//! Create and patch document using JSON Patch:
 //!
 //! ```rust
 //! #[macro_use]
@@ -40,15 +39,57 @@
 //!
 //! # }
 //! ```
+//! 
+//! Create and patch document using JSON Merge Patch:
+//!
+//! ```rust
+//! #[macro_use]
+//! extern crate serde_json;
+//! extern crate json_patch;
+//!
+//! use json_patch::merge;
+//!
+//! # pub fn main() {
+//! let mut doc = json!({
+//!   "title": "Goodbye!",
+//!   "author" : {
+//!     "givenName" : "John",
+//!     "familyName" : "Doe"
+//!   },
+//!   "tags":[ "example", "sample" ],
+//!   "content": "This will be unchanged"
+//! });
+//!
+//! let patch = json!({
+//!   "title": "Hello!",
+//!   "phoneNumber": "+01-123-456-7890",
+//!   "author": {
+//!     "familyName": null
+//!   },
+//!   "tags": [ "example" ]
+//! });
+//!
+//! merge(&mut doc, &patch);
+//! assert_eq!(doc, json!({
+//!   "title": "Hello!",
+//!   "author" : {
+//!     "givenName" : "John"
+//!   },
+//!   "tags": [ "example" ],
+//!   "content": "This will be unchanged",
+//!   "phoneNumber": "+01-123-456-7890"
+//! }));
+//! # }
+//! ```
 #![feature(test)]
-#![deny(warnings)]
+//#![deny(warnings)]
 #![warn(missing_docs)]
 #[macro_use]
 extern crate serde_derive;
 #[cfg_attr(test, macro_use)]
 extern crate serde_json;
 
-use serde_json::Value;
+use serde_json::{Value, Map};
 use std::mem;
 use util::{parse_index, split_pointer};
 pub use util::PatchError;
@@ -252,7 +293,7 @@ pub fn from_value(value: Value) -> Result<Patch, serde_json::Error> {
 /// failed, all previous operations are reverted. In case of internal error resulting in panic,
 /// document might be left in inconsistent state.
 ///
-/// # Examples
+/// # Example
 /// Create and patch document:
 ///
 /// ```rust
@@ -364,6 +405,70 @@ pub unsafe fn patch_unsafe(doc: &mut Value, patch: &Patch) -> Result<(), PatchEr
         };
     }
     Ok(())
+}
+
+/// Patch provided JSON document (given as `serde_json::Value`) in place with JSON Merge Patch
+/// (RFC 7396).
+///
+/// # Example
+/// Create and patch document:
+///
+/// ```rust
+/// #[macro_use]
+/// extern crate serde_json;
+/// extern crate json_patch;
+///
+/// use json_patch::merge;
+///
+/// # pub fn main() {
+/// let mut doc = json!({
+///   "title": "Goodbye!",
+///   "author" : {
+///     "givenName" : "John",
+///     "familyName" : "Doe"
+///   },
+///   "tags":[ "example", "sample" ],
+///   "content": "This will be unchanged"
+/// });
+///
+/// let patch = json!({
+///   "title": "Hello!",
+///   "phoneNumber": "+01-123-456-7890",
+///   "author": {
+///     "familyName": null
+///   },
+///   "tags": [ "example" ]
+/// });
+///
+/// merge(&mut doc, &patch);
+/// assert_eq!(doc, json!({
+///   "title": "Hello!",
+///   "author" : {
+///     "givenName" : "John"
+///   },
+///   "tags": [ "example" ],
+///   "content": "This will be unchanged",
+///   "phoneNumber": "+01-123-456-7890"
+/// }));
+/// # }
+/// ```
+pub fn merge(doc: &mut Value, patch: &Value) {
+    if !patch.is_object() {
+        *doc = patch.clone();
+        return;
+    }
+
+    if !doc.is_object() {
+        *doc = Value::Object(Map::new());
+    }
+    let map = doc.as_object_mut().unwrap();
+    for (key, value) in patch.as_object().unwrap() {
+        if value.is_null() {
+            map.remove(key.as_str());
+        } else {
+            merge(map.entry(key.as_str()).or_insert(Value::Null), value);
+        }
+    }
 }
 
 #[cfg(test)]
