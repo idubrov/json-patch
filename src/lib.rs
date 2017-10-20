@@ -16,12 +16,12 @@
 //!     { "name": "Maxim" }
 //! ]);
 //!
-//! let ops = from_str(r#"[
+//! let p = from_str(r#"[
 //!   { "op": "test", "path": "/0/name", "value": "Andrew" },
 //!   { "op": "add", "path": "/0/happy", "value": true }
 //! ]"#).unwrap();
 //!
-//! patch(&mut doc, &ops).unwrap();
+//! patch(&mut doc, &p).unwrap();
 //! assert_eq!(doc, json!([
 //!   { "name": "Andrew", "happy": true },
 //!   { "name": "Maxim" }
@@ -196,7 +196,7 @@ fn test(doc: &Value, path: &str, expected: &Value) -> Result<(), PatchError> {
 /// Create JSON Patch from JSON Value
 /// # Examples
 ///
-/// Create patch from 'serde_json::Value':
+/// Create patch from `serde_json::Value`:
 ///
 /// ```rust
 /// #[macro_use]
@@ -258,12 +258,12 @@ pub fn from_value(value: Value) -> Result<Patch, serde_json::Error> {
 ///     { "name": "Maxim" }
 /// ]);
 ///
-/// let ops = from_str(r#"[
+/// let p = from_str(r#"[
 ///   { "op": "test", "path": "/0/name", "value": "Andrew" },
 ///   { "op": "add", "path": "/0/happy", "value": true }
 /// ]"#).unwrap();
 ///
-/// patch(&mut doc, &ops).unwrap();
+/// patch(&mut doc, &p).unwrap();
 /// assert_eq!(doc, json!([
 ///   { "name": "Andrew", "happy": true },
 ///   { "name": "Maxim" }
