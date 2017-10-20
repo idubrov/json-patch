@@ -74,7 +74,7 @@ pub fn gen_add_remove_patches<R: Rng>(value: &Value, rnd: &mut R, patches: usize
             ops.push(PatchOperation::Remove(RemoveOperation { path: (*path).clone() }));
             ops.push(PatchOperation::Add(AddOperation { path: (*path).clone(), value: Value::Null }));
         }
-        vec.push(ops);
+        vec.push(Patch(ops));
     }
     vec
 }

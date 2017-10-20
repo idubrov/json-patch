@@ -1,4 +1,32 @@
 //! Library that implements [RFC 6902](https://tools.ietf.org/html/rfc6902), JavaScript Object Notation (JSON) Patch
+//! # Examples
+//! Create and patch document:
+//!
+//! ```rust
+//! #[macro_use]
+//! extern crate serde_json;
+//! extern crate json_patch;
+//! use json_patch::{patch, from_value};
+//!
+//! # pub fn main() {
+//! let mut doc = json!([
+//!     { "name": "Andrew" },
+//!     { "name": "Maxim" }
+//! ]);
+//!
+//! let ops = from_value(json!([
+//!   { "op": "test", "path": "/0/name", "value": "Andrew" },
+//!   { "op": "add", "path": "/0/happy", "value": true }
+//! ])).unwrap();
+//!
+//! patch(&mut doc, &ops).unwrap();
+//! assert_eq!(doc, json!([
+//!   { "name": "Andrew", "happy": true },
+//!   { "name": "Maxim" }
+//! ]));
+//!
+//! # }
+//! ```
 #![feature(test)]
 #![deny(warnings)]
 #![warn(missing_docs)]
@@ -8,16 +36,13 @@ extern crate serde_json;
 
 use serde_json::Value;
 use std::mem;
+use util::{parse_index, split_pointer};
+pub use util::PatchError;
 
 mod util;
 
-use util::{parse_index, split_pointer};
-
-pub use util::PatchError;
-
-
 /// Representation of JSON Patch (list of patch operations)
-pub type Patch = Vec<PatchOperation>;
+pub struct Patch(Vec<PatchOperation>);
 
 
 /// JSON Patch 'add' operation representation
@@ -165,19 +190,29 @@ fn test(doc: &Value, path: &str, expected: &Value) -> Result<(), PatchError> {
     }
 }
 
+/// Create JSON Patch from JSON Value
+pub fn from_value(value: Value) -> Result<Patch, serde_json::Error> {
+    let patch = serde_json::from_value::<Vec<PatchOperation>>(value)?;
+    Ok(Patch(patch))
+}
+
 /// Patch provided JSON document (given as `serde_json::Value`) in place.
 /// Application is atomic. If any of the patch is failed, all previous operations are reverted.
-pub fn patch(doc: &mut Value, patches: &[PatchOperation]) -> Result<(), PatchError> {
-    let (p, tail) = match patches.split_first() {
+pub fn patch(doc: &mut Value, patch: &Patch) -> Result<(), PatchError> {
+    apply_patches(doc, &patch.0)
+}
+
+fn apply_patches(doc: &mut Value, patches: &[PatchOperation]) -> Result<(), PatchError> {
+    let (patch, tail) = match patches.split_first() {
         None => return Ok(()),
         Some((patch, tail)) => (patch, tail)
     };
 
     use PatchOperation::*;
-    match *p {
+    match *patch {
         Add(ref op) => {
             let prev = add(doc, op.path.as_str(), op.value.clone())?;
-            patch(doc, tail).map_err(move |e| {
+            apply_patches(doc, tail).map_err(move |e| {
                 match prev {
                     None => remove(doc, op.path.as_str(), true).unwrap(),
                     Some(v) => add(doc, op.path.as_str(), v).unwrap().unwrap()
@@ -187,21 +222,21 @@ pub fn patch(doc: &mut Value, patches: &[PatchOperation]) -> Result<(), PatchErr
         }
         Remove(ref op) => {
             let prev = remove(doc, op.path.as_str(), false)?;
-            patch(doc, tail).map_err(move |e| {
+            apply_patches(doc, tail).map_err(move |e| {
                 assert!(add(doc, op.path.as_str(), prev).unwrap().is_none());
                 e
             })
         }
         Replace(ref op) => {
             let prev = replace(doc, op.path.as_str(), op.value.clone())?;
-            patch(doc, tail).map_err(move |e| {
+            apply_patches(doc, tail).map_err(move |e| {
                 replace(doc, op.path.as_str(), prev).unwrap();
                 e
             })
         }
         Move(ref op) => {
             let prev = mov(doc, op.from.as_str(), op.path.as_str(), false)?;
-            patch(doc, tail).map_err(move |e| {
+            apply_patches(doc, tail).map_err(move |e| {
                 mov(doc, op.path.as_str(), op.from.as_str(), true).unwrap();
                 if let Some(prev) = prev {
                     assert!(add(doc, op.path.as_str(), prev).unwrap().is_none());
@@ -211,7 +246,7 @@ pub fn patch(doc: &mut Value, patches: &[PatchOperation]) -> Result<(), PatchErr
         }
         Copy(ref op) => {
             let prev = copy(doc, op.from.as_str(), op.path.as_str())?;
-            patch(doc, tail).map_err(move |e| {
+            apply_patches(doc, tail).map_err(move |e| {
                 match prev {
                     None => remove(doc, op.path.as_str(), true).unwrap(),
                     Some(v) => add(doc, op.path.as_str(), v).unwrap().unwrap()
@@ -221,7 +256,7 @@ pub fn patch(doc: &mut Value, patches: &[PatchOperation]) -> Result<(), PatchErr
         }
         Test(ref op) => {
             test(doc, op.path.as_str(), &op.value)?;
-            patch(doc, tail)
+            apply_patches(doc, tail)
         }
     }
 }
@@ -230,10 +265,10 @@ pub fn patch(doc: &mut Value, patches: &[PatchOperation]) -> Result<(), PatchErr
 /// Patch provided JSON document (given as `serde_json::Value`) in place.
 /// Operations are applied in unsafe manner. If any of the operations fails, all previous
 /// operations are not reverted.
-pub unsafe fn patch_unsafe(doc: &mut Value, patches: &[PatchOperation]) -> Result<(), PatchError> {
+pub unsafe fn patch_unsafe(doc: &mut Value, patch: &Patch) -> Result<(), PatchError> {
     use PatchOperation::*;
-    for patch in patches {
-        match *patch {
+    for op in &patch.0 {
+        match *op {
             Add(ref op) => { add(doc, op.path.as_str(), op.value.clone())?; }
             Remove(ref op) => { remove(doc, op.path.as_str(), false)?; }
             Replace(ref op) => { replace(doc, op.path.as_str(), op.value.clone())?; }
