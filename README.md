@@ -5,7 +5,18 @@
 
 # json-patch
 
-Library that implements [RFC 6902](https://tools.ietf.org/html/rfc6902), JavaScript Object Notation (JSON) Patch
+JSON-Patch [RFC 6902](https://tools.ietf.org/html/rfc6902), JavaScript Object Notation (JSON) Patch implementation.
+
+JSON-Patch implementation based on `serde_json` crate.
+
+## Usage
+
+Add this to your *Cargo.toml*:
+```toml
+[dependencies]
+json-patch = "*"
+```
+
 ## Examples
 Create and patch document:
 
