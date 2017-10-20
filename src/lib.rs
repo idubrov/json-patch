@@ -6,7 +6,9 @@
 //! #[macro_use]
 //! extern crate serde_json;
 //! extern crate json_patch;
-//! use json_patch::{patch, from_value};
+//!
+//! use json_patch::patch;
+//! use serde_json::from_str;
 //!
 //! # pub fn main() {
 //! let mut doc = json!([
@@ -14,10 +16,10 @@
 //!     { "name": "Maxim" }
 //! ]);
 //!
-//! let ops = from_value(json!([
+//! let ops = from_str(r#"[
 //!   { "op": "test", "path": "/0/name", "value": "Andrew" },
 //!   { "op": "add", "path": "/0/happy", "value": true }
-//! ])).unwrap();
+//! ]"#).unwrap();
 //!
 //! patch(&mut doc, &ops).unwrap();
 //! assert_eq!(doc, json!([
@@ -107,7 +109,6 @@ pub enum PatchOperation {
     Test(TestOperation)
 }
 
-// FIXME: don't take value, take ref? Otherwise, we clone too early...
 fn add(doc: &mut Value, path: &str, value: Value) -> Result<Option<Value>, PatchError> {
     if path == "" {
         return Ok(Some(mem::replace(doc, value)));
@@ -193,6 +194,44 @@ fn test(doc: &Value, path: &str, expected: &Value) -> Result<(), PatchError> {
 }
 
 /// Create JSON Patch from JSON Value
+/// # Examples
+///
+/// Create patch from 'serde_json::Value':
+///
+/// ```rust
+/// #[macro_use]
+/// extern crate serde_json;
+/// extern crate json_patch;
+///
+/// use json_patch::{Patch, from_value};
+///
+/// # pub fn main() {
+/// let patch_value = json!([
+///   { "op": "test", "path": "/0/name", "value": "Andrew" },
+///   { "op": "add", "path": "/0/happy", "value": true }
+/// ]);
+/// let patch: Patch = from_value(patch_value).unwrap();
+/// # }
+/// ```
+///
+/// Create patch from string:
+///
+/// ```rust
+/// #[macro_use]
+/// extern crate serde_json;
+/// extern crate json_patch;
+///
+/// use json_patch::Patch;
+/// use serde_json::from_str;
+///
+/// # pub fn main() {
+/// let patch_str = r#"[
+///   { "op": "test", "path": "/0/name", "value": "Andrew" },
+///   { "op": "add", "path": "/0/happy", "value": true }
+/// ]"#;
+/// let patch: Patch = from_str(patch_str).unwrap();
+/// # }
+/// ```
 pub fn from_value(value: Value) -> Result<Patch, serde_json::Error> {
     let patch = serde_json::from_value::<Vec<PatchOperation>>(value)?;
     Ok(Patch(patch))
@@ -201,10 +240,43 @@ pub fn from_value(value: Value) -> Result<Patch, serde_json::Error> {
 /// Patch provided JSON document (given as `serde_json::Value`) in-place. If any of the patch is
 /// failed, all previous operations are reverted. In case of internal error resulting in panic,
 /// document might be left in inconsistent state.
+///
+/// # Examples
+/// Create and patch document:
+///
+/// ```rust
+/// #[macro_use]
+/// extern crate serde_json;
+/// extern crate json_patch;
+///
+/// use json_patch::patch;
+/// use serde_json::from_str;
+///
+/// # pub fn main() {
+/// let mut doc = json!([
+///     { "name": "Andrew" },
+///     { "name": "Maxim" }
+/// ]);
+///
+/// let ops = from_str(r#"[
+///   { "op": "test", "path": "/0/name", "value": "Andrew" },
+///   { "op": "add", "path": "/0/happy", "value": true }
+/// ]"#).unwrap();
+///
+/// patch(&mut doc, &ops).unwrap();
+/// assert_eq!(doc, json!([
+///   { "name": "Andrew", "happy": true },
+///   { "name": "Maxim" }
+/// ]));
+///
+/// # }
+/// ```
 pub fn patch(doc: &mut Value, patch: &Patch) -> Result<(), PatchError> {
     apply_patches(doc, &patch.0)
 }
 
+// Apply patches while tracking all the changes being made so they can be reverted back in case
+// subsequent patches fail. Uses stack recursion to keep the state.
 fn apply_patches(doc: &mut Value, patches: &[PatchOperation]) -> Result<(), PatchError> {
     let (patch, tail) = match patches.split_first() {
         None => return Ok(()),

@@ -13,17 +13,19 @@ Create and patch document:
 #[macro_use]
 extern crate serde_json;
 extern crate json_patch;
-use json_patch::{patch, from_value};
+
+use json_patch::patch;
+use serde_json::from_str;
 
 let mut doc = json!([
     { "name": "Andrew" },
     { "name": "Maxim" }
 ]);
 
-let ops = from_value(json!([
+let ops = from_str(r#"[
   { "op": "test", "path": "/0/name", "value": "Andrew" },
   { "op": "add", "path": "/0/happy", "value": true }
-])).unwrap();
+]"#).unwrap();
 
 patch(&mut doc, &ops).unwrap();
 assert_eq!(doc, json!([
