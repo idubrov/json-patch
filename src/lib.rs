@@ -39,7 +39,7 @@
 //!
 //! # }
 //! ```
-//! 
+//!
 //! Create and patch document using JSON Merge Patch:
 //!
 //! ```rust
@@ -105,41 +105,41 @@ pub struct Patch(Vec<PatchOperation>);
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct AddOperation {
     path: String,
-    value: Value
+    value: Value,
 }
 
 /// JSON Patch 'remove' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct RemoveOperation {
-    path: String
+    path: String,
 }
 
 /// JSON Patch 'replace' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct ReplaceOperation {
     path: String,
-    value: Value
+    value: Value,
 }
 
 /// JSON Patch 'move' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct MoveOperation {
     from: String,
-    path: String
+    path: String,
 }
 
 /// JSON Patch 'copy' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct CopyOperation {
     from: String,
-    path: String
+    path: String,
 }
 
 /// JSON Patch 'test' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct TestOperation {
     path: String,
-    value: Value
+    value: Value,
 }
 
 /// JSON Patch single patch operation
@@ -158,7 +158,7 @@ pub enum PatchOperation {
     /// 'copy' operation
     Copy(CopyOperation),
     /// 'test' operation
-    Test(TestOperation)
+    Test(TestOperation),
 }
 
 fn add(doc: &mut Value, path: &str, value: Value) -> Result<Option<Value>, PatchError> {
@@ -167,13 +167,10 @@ fn add(doc: &mut Value, path: &str, value: Value) -> Result<Option<Value>, Patch
     }
 
     let (parent, last) = split_pointer(path)?;
-    let parent = doc.pointer_mut(parent)
-        .ok_or(PatchError::InvalidPointer)?;
+    let parent = doc.pointer_mut(parent).ok_or(PatchError::InvalidPointer)?;
 
     match *parent {
-        Value::Object(ref mut obj) => {
-            Ok(obj.insert(String::from(last), value))
-        }
+        Value::Object(ref mut obj) => Ok(obj.insert(String::from(last), value)),
         Value::Array(ref mut arr) if last == "-" => {
             arr.push(value);
             Ok(None)
@@ -183,41 +180,41 @@ fn add(doc: &mut Value, path: &str, value: Value) -> Result<Option<Value>, Patch
             arr.insert(idx, value);
             Ok(None)
         }
-        _ => Err(PatchError::InvalidPointer)
+        _ => Err(PatchError::InvalidPointer),
     }
 }
 
 fn remove(doc: &mut Value, path: &str, allow_last: bool) -> Result<Value, PatchError> {
     let (parent, last) = split_pointer(path)?;
-    let parent = doc.pointer_mut(parent)
-        .ok_or(PatchError::InvalidPointer)?;
+    let parent = doc.pointer_mut(parent).ok_or(PatchError::InvalidPointer)?;
 
     match *parent {
         Value::Object(ref mut obj) => {
             match obj.remove(last.as_str()) {
                 None => Err(PatchError::InvalidPointer),
-                Some(val) => Ok(val)
+                Some(val) => Ok(val),
             }
         }
-        Value::Array(ref mut arr) if allow_last && last == "-" => {
-            Ok(arr.pop().unwrap())
-        }
+        Value::Array(ref mut arr) if allow_last && last == "-" => Ok(arr.pop().unwrap()),
         Value::Array(ref mut arr) => {
             let idx = parse_index(last.as_str(), arr.len())?;
             Ok(arr.remove(idx))
         }
-        _ => Err(PatchError::InvalidPointer)
+        _ => Err(PatchError::InvalidPointer),
     }
 }
 
 fn replace(doc: &mut Value, path: &str, value: Value) -> Result<Value, PatchError> {
-    let target = doc
-        .pointer_mut(path)
-        .ok_or(PatchError::InvalidPointer)?;
+    let target = doc.pointer_mut(path).ok_or(PatchError::InvalidPointer)?;
     Ok(mem::replace(target, value))
 }
 
-fn mov(doc: &mut Value, from: &str, path: &str, allow_last: bool) -> Result<Option<Value>, PatchError> {
+fn mov(
+    doc: &mut Value,
+    from: &str,
+    path: &str,
+    allow_last: bool,
+) -> Result<Option<Value>, PatchError> {
     // Check we are not moving inside own child
     if path.starts_with(from) && path[from.len()..].starts_with('/') {
         return Err(PatchError::InvalidPointer);
@@ -227,17 +224,12 @@ fn mov(doc: &mut Value, from: &str, path: &str, allow_last: bool) -> Result<Opti
 }
 
 fn copy(doc: &mut Value, from: &str, path: &str) -> Result<Option<Value>, PatchError> {
-    let source = doc
-        .pointer(from)
-        .ok_or(PatchError::InvalidPointer)?
-        .clone();
+    let source = doc.pointer(from).ok_or(PatchError::InvalidPointer)?.clone();
     add(doc, path, source)
 }
 
 fn test(doc: &Value, path: &str, expected: &Value) -> Result<(), PatchError> {
-    let target = doc
-        .pointer(path)
-        .ok_or(PatchError::InvalidPointer)?;
+    let target = doc.pointer(path).ok_or(PatchError::InvalidPointer)?;
     if *target == *expected {
         Ok(())
     } else {
@@ -332,7 +324,7 @@ pub fn patch(doc: &mut Value, patch: &Patch) -> Result<(), PatchError> {
 fn apply_patches(doc: &mut Value, patches: &[PatchOperation]) -> Result<(), PatchError> {
     let (patch, tail) = match patches.split_first() {
         None => return Ok(()),
-        Some((patch, tail)) => (patch, tail)
+        Some((patch, tail)) => (patch, tail),
     };
 
     use PatchOperation::*;
@@ -342,7 +334,7 @@ fn apply_patches(doc: &mut Value, patches: &[PatchOperation]) -> Result<(), Patc
             apply_patches(doc, tail).map_err(move |e| {
                 match prev {
                     None => remove(doc, op.path.as_str(), true).unwrap(),
-                    Some(v) => add(doc, op.path.as_str(), v).unwrap().unwrap()
+                    Some(v) => add(doc, op.path.as_str(), v).unwrap().unwrap(),
                 };
                 e
             })
@@ -376,7 +368,7 @@ fn apply_patches(doc: &mut Value, patches: &[PatchOperation]) -> Result<(), Patc
             apply_patches(doc, tail).map_err(move |e| {
                 match prev {
                     None => remove(doc, op.path.as_str(), true).unwrap(),
-                    Some(v) => add(doc, op.path.as_str(), v).unwrap().unwrap()
+                    Some(v) => add(doc, op.path.as_str(), v).unwrap().unwrap(),
                 };
                 e
             })
@@ -396,12 +388,24 @@ pub unsafe fn patch_unsafe(doc: &mut Value, patch: &Patch) -> Result<(), PatchEr
     use PatchOperation::*;
     for op in &patch.0 {
         match *op {
-            Add(ref op) => { add(doc, op.path.as_str(), op.value.clone())?; }
-            Remove(ref op) => { remove(doc, op.path.as_str(), false)?; }
-            Replace(ref op) => { replace(doc, op.path.as_str(), op.value.clone())?; }
-            Move(ref op) => { mov(doc, op.from.as_str(), op.path.as_str(), false)?; }
-            Copy(ref op) => { copy(doc, op.from.as_str(), op.path.as_str())?; }
-            Test(ref op) => { test(doc, op.path.as_str(), &op.value)?; }
+            Add(ref op) => {
+                add(doc, op.path.as_str(), op.value.clone())?;
+            }
+            Remove(ref op) => {
+                remove(doc, op.path.as_str(), false)?;
+            }
+            Replace(ref op) => {
+                replace(doc, op.path.as_str(), op.value.clone())?;
+            }
+            Move(ref op) => {
+                mov(doc, op.from.as_str(), op.path.as_str(), false)?;
+            }
+            Copy(ref op) => {
+                copy(doc, op.from.as_str(), op.path.as_str())?;
+            }
+            Test(ref op) => {
+                test(doc, op.path.as_str(), &op.value)?;
+            }
         };
     }
     Ok(())

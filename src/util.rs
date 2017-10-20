@@ -8,7 +8,7 @@ pub enum PatchError {
     InvalidPointer,
 
     /// 'test' operation failed
-    TestFailed
+    TestFailed,
 }
 
 impl Error for PatchError {
@@ -16,7 +16,7 @@ impl Error for PatchError {
         use PatchError::*;
         match *self {
             InvalidPointer => "invalid pointer",
-            TestFailed => "test failed"
+            TestFailed => "test failed",
         }
     }
 }
@@ -31,16 +31,21 @@ impl fmt::Display for PatchError {
 pub fn parse_index(str: &str, len: usize) -> Result<usize, PatchError> {
     // RFC 6901 prohibits leading zeroes in index
     if str.starts_with('0') && str.len() != 1 {
-        return Err(PatchError::InvalidPointer)
+        return Err(PatchError::InvalidPointer);
     }
     match str.parse::<usize>() {
         Ok(idx) if idx < len => Ok(idx),
-        Err(_) | Ok(_) => Err(PatchError::InvalidPointer)
+        Err(_) | Ok(_) => Err(PatchError::InvalidPointer),
     }
 }
 
 pub fn split_pointer(pointer: &str) -> Result<(&str, String), PatchError> {
-    pointer.rfind('/')
-        .ok_or(PatchError::InvalidPointer)
-        .map(|idx| (&pointer[0..idx], pointer[idx + 1..].replace("~1", "/").replace("~0", "~")))
+    pointer.rfind('/').ok_or(PatchError::InvalidPointer).map(
+        |idx| {
+            (
+                &pointer[0..idx],
+                pointer[idx + 1..].replace("~1", "/").replace("~0", "~"),
+            )
+        },
+    )
 }

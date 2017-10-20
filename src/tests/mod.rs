@@ -26,14 +26,18 @@ fn parse_from_value() {
         })])
     );
 
-    let _patch: Patch = from_str(r#"[{"op": "add", "path": "/a/b", "value": 1}, {"op": "remove", "path": "/c"}]"#).unwrap();
+    let _patch: Patch = from_str(
+        r#"[{"op": "add", "path": "/a/b", "value": 1}, {"op": "remove", "path": "/c"}]"#,
+    ).unwrap();
 }
 
 #[test]
 fn parse_from_string() {
     use PatchOperation::*;
 
-    let patch: Patch = from_str(r#"[{"op": "add", "path": "/a/b", "value": 1}, {"op": "remove", "path": "/c"}]"#).unwrap();
+    let patch: Patch = from_str(
+        r#"[{"op": "add", "path": "/a/b", "value": 1}, {"op": "remove", "path": "/c"}]"#,
+    ).unwrap();
 
     assert_eq!(patch, Patch(vec![
         Add(AddOperation {

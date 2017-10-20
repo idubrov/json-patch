@@ -14,7 +14,7 @@ struct TestCase {
     #[serde(default)]
     disabled: bool,
     #[serde(default)]
-    merge: bool
+    merge: bool,
 }
 
 fn run_case(doc: Value, patches: Value, merge_patch: bool) -> Result<Value, String> {
@@ -27,7 +27,11 @@ fn run_case(doc: Value, patches: Value, merge_patch: bool) -> Result<Value, Stri
         // Patch and verify that in case of error document wasn't changed
         patch(&mut actual, &patches)
             .map_err(|e| {
-                assert_eq!(doc, actual, "no changes should be made to the original document");
+                assert_eq!(
+                    doc,
+                    actual,
+                    "no changes should be made to the original document"
+                );
                 e
             })
             .map_err(|e| e.to_string())?;

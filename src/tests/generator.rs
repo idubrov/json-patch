@@ -8,7 +8,7 @@ pub struct Params {
     pub map_size: usize,
     pub value_size: usize,
     pub depth: usize,
-    pub key_size: usize
+    pub key_size: usize,
 }
 
 impl Default for Params {
@@ -18,7 +18,7 @@ impl Default for Params {
             map_size: 6,
             value_size: 100,
             depth: 8,
-            key_size: 20
+            key_size: 20,
         }
     }
 }
@@ -34,7 +34,7 @@ fn rand_literal<R: Rng>(rng: &mut R, value_size: usize) -> Value {
         1 => Value::String(rand_str(rng, value_size)),
         2 => Value::Bool(false),
         3 => Value::from(rng.gen::<u64>()),
-        _ => panic!()
+        _ => panic!(),
     }
 }
 
@@ -57,22 +57,37 @@ impl Params {
             // Generate random object
             let len = (rng.gen::<usize>() % self.map_size) + 1;
             let map: Map<String, Value> = (0..len)
-                .map(|_| (rand_str(rng, self.key_size), self.gen_internal(depth - 1, rng)))
+                .map(|_| {
+                    (
+                        rand_str(rng, self.key_size),
+                        self.gen_internal(depth - 1, rng),
+                    )
+                })
                 .collect();
             Value::from(map)
         }
     }
 }
 
-pub fn gen_add_remove_patches<R: Rng>(value: &Value, rnd: &mut R, patches: usize, operations: usize) -> Vec<Patch> {
+pub fn gen_add_remove_patches<R: Rng>(
+    value: &Value,
+    rnd: &mut R,
+    patches: usize,
+    operations: usize,
+) -> Vec<Patch> {
     let leafs = util::all_leafs(value);
     let mut vec = Vec::new();
     for _ in 0..patches {
         let mut ops = Vec::new();
         for _ in 0..operations {
             let path = &rnd.choose(&leafs).unwrap();
-            ops.push(PatchOperation::Remove(RemoveOperation { path: (*path).clone() }));
-            ops.push(PatchOperation::Add(AddOperation { path: (*path).clone(), value: Value::Null }));
+            ops.push(PatchOperation::Remove(
+                RemoveOperation { path: (*path).clone() },
+            ));
+            ops.push(PatchOperation::Add(AddOperation {
+                path: (*path).clone(),
+                value: Value::Null,
+            }));
         }
         vec.push(Patch(ops));
     }
