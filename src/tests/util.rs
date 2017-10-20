@@ -16,7 +16,7 @@ struct TestCase {
 }
 
 fn run_case(doc: Value, patches: Value) -> Result<Value, String> {
-    let patches: Patch = Patch(serde_json::from_value(patches).map_err(|e| e.to_string())?);
+    let patches: Patch = serde_json::from_value(patches).map_err(|e| e.to_string())?;
     let mut actual = doc.clone();
 
     // Patch and verify that in case of error document wasn't changed

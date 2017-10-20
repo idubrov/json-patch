@@ -32,6 +32,7 @@
 #![warn(missing_docs)]
 #[macro_use]
 extern crate serde_derive;
+#[cfg_attr(test, macro_use)]
 extern crate serde_json;
 
 use serde_json::Value;
@@ -42,52 +43,53 @@ pub use util::PatchError;
 mod util;
 
 /// Representation of JSON Patch (list of patch operations)
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Patch(Vec<PatchOperation>);
 
 
 /// JSON Patch 'add' operation representation
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct AddOperation {
     path: String,
     value: Value
 }
 
 /// JSON Patch 'remove' operation representation
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct RemoveOperation {
     path: String
 }
 
 /// JSON Patch 'replace' operation representation
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct ReplaceOperation {
     path: String,
     value: Value
 }
 
 /// JSON Patch 'move' operation representation
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct MoveOperation {
     from: String,
     path: String
 }
 
 /// JSON Patch 'copy' operation representation
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct CopyOperation {
     from: String,
     path: String
 }
 
 /// JSON Patch 'test' operation representation
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct TestOperation {
     path: String,
     value: Value
 }
 
 /// JSON Patch single patch operation
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(tag = "op")]
 #[serde(rename_all = "lowercase")]
 pub enum PatchOperation {
