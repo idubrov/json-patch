@@ -82,7 +82,7 @@
 //! # }
 //! ```
 #![feature(test)]
-//#![deny(warnings)]
+#![deny(warnings)]
 #![warn(missing_docs)]
 #[macro_use]
 extern crate serde_derive;
