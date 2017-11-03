@@ -81,7 +81,7 @@
 //! }));
 //! # }
 //! ```
-#![feature(test)]
+#![cfg_attr(feature = "nightly", feature(test))]
 #![deny(warnings)]
 #![warn(missing_docs)]
 #[macro_use]
