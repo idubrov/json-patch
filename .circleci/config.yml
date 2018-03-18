@@ -9,10 +9,10 @@ jobs:
       - checkout
       - run: cargo +stable build
       - run: cargo +stable test --all
-      - run: cargo +nightly build
-      - run: cargo +nighly test --all
-      - run: cargo +nightly clippy
-      - run: cargo +nightly kcov
+      - run: cargo build
+      - run: cargo test --all
+      - run: cargo clippy
+      - run: cargo kcov
       - run:
           name: Uploading code coverage
           command: |
