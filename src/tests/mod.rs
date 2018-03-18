@@ -1,7 +1,7 @@
 #![allow(unused)]
+extern crate rand;
 #[cfg(feature = "nightly")]
 extern crate test;
-extern crate rand;
 
 mod util;
 mod generator;
@@ -19,14 +19,17 @@ fn parse_from_value() {
     let json = json!([{"op": "add", "path": "/a/b", "value": 1}, {"op": "remove", "path": "/c"}]);
     let patch: Patch = from_value(json).unwrap();
 
-    assert_eq!(patch, Patch(vec![
-        Add(AddOperation {
-            path: String::from("/a/b"),
-            value: Value::from(1)
-        }),
-        Remove(RemoveOperation {
-            path: String::from("/c")
-        })])
+    assert_eq!(
+        patch,
+        Patch(vec![
+            Add(AddOperation {
+                path: String::from("/a/b"),
+                value: Value::from(1),
+            }),
+            Remove(RemoveOperation {
+                path: String::from("/c"),
+            }),
+        ])
     );
 
     let _patch: Patch = from_str(
@@ -42,14 +45,17 @@ fn parse_from_string() {
         r#"[{"op": "add", "path": "/a/b", "value": 1}, {"op": "remove", "path": "/c"}]"#,
     ).unwrap();
 
-    assert_eq!(patch, Patch(vec![
-        Add(AddOperation {
-            path: String::from("/a/b"),
-            value: Value::from(1)
-        }),
-        Remove(RemoveOperation {
-            path: String::from("/c")
-        })])
+    assert_eq!(
+        patch,
+        Patch(vec![
+            Add(AddOperation {
+                path: String::from("/a/b"),
+                value: Value::from(1),
+            }),
+            Remove(RemoveOperation {
+                path: String::from("/c"),
+            }),
+        ])
     );
 }
 
@@ -82,12 +88,13 @@ fn merge_tests() {
     util::run_specs("specs/merge_tests.json");
 }
 
-
 #[cfg(feature = "nightly")]
 #[bench]
 fn bench_add_removes(b: &mut Bencher) {
     let mut rng = rand::StdRng::from_seed(&[0]);
-    let params = generator::Params { ..Default::default() };
+    let params = generator::Params {
+        ..Default::default()
+    };
     let doc = params.gen(&mut rng);
     let patches = generator::gen_add_remove_patches(&doc, &mut rng, 10, 10);
 
@@ -105,7 +112,9 @@ fn bench_add_removes(b: &mut Bencher) {
 #[bench]
 fn bench_add_removes_unsafe(b: &mut Bencher) {
     let mut rng = rand::StdRng::from_seed(&[0]);
-    let params = generator::Params { ..Default::default() };
+    let params = generator::Params {
+        ..Default::default()
+    };
     let doc = params.gen(&mut rng);
     let patches = generator::gen_add_remove_patches(&doc, &mut rng, 10, 10);
 

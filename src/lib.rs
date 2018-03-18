@@ -89,17 +89,13 @@ extern crate serde_derive;
 #[cfg_attr(test, macro_use)]
 extern crate serde_json;
 
-use serde_json::{Value, Map};
-use std::mem;
-use util::{parse_index, split_pointer};
-pub use util::PatchError;
-
-mod util;
+use serde_json::{Map, Value};
+use std::{fmt, mem};
+use std::error::Error;
 
 /// Representation of JSON Patch (list of patch operations)
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Patch(Vec<PatchOperation>);
-
 
 /// JSON Patch 'add' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -161,6 +157,55 @@ pub enum PatchOperation {
     Test(TestOperation),
 }
 
+/// This type represents all possible errors that can occur when applying JSON patch
+#[derive(Debug)]
+pub enum PatchError {
+    /// One of the pointers in the patch is invalid
+    InvalidPointer,
+
+    /// 'test' operation failed
+    TestFailed,
+}
+
+impl Error for PatchError {
+    fn description(&self) -> &str {
+        use PatchError::*;
+        match *self {
+            InvalidPointer => "invalid pointer",
+            TestFailed => "test failed",
+        }
+    }
+}
+
+impl fmt::Display for PatchError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        self.description().fmt(fmt)
+    }
+}
+
+fn parse_index(str: &str, len: usize) -> Result<usize, PatchError> {
+    // RFC 6901 prohibits leading zeroes in index
+    if str.starts_with('0') && str.len() != 1 {
+        return Err(PatchError::InvalidPointer);
+    }
+    match str.parse::<usize>() {
+        Ok(idx) if idx < len => Ok(idx),
+        _ => Err(PatchError::InvalidPointer),
+    }
+}
+
+fn split_pointer(pointer: &str) -> Result<(&str, String), PatchError> {
+    pointer
+        .rfind('/')
+        .ok_or(PatchError::InvalidPointer)
+        .map(|idx| {
+            (
+                &pointer[0..idx],
+                pointer[idx + 1..].replace("~1", "/").replace("~0", "~"),
+            )
+        })
+}
+
 fn add(doc: &mut Value, path: &str, value: Value) -> Result<Option<Value>, PatchError> {
     if path == "" {
         return Ok(Some(mem::replace(doc, value)));
@@ -170,7 +215,7 @@ fn add(doc: &mut Value, path: &str, value: Value) -> Result<Option<Value>, Patch
     let parent = doc.pointer_mut(parent).ok_or(PatchError::InvalidPointer)?;
 
     match *parent {
-        Value::Object(ref mut obj) => Ok(obj.insert(String::from(last), value)),
+        Value::Object(ref mut obj) => Ok(obj.insert(last, value)),
         Value::Array(ref mut arr) if last == "-" => {
             arr.push(value);
             Ok(None)
@@ -189,12 +234,10 @@ fn remove(doc: &mut Value, path: &str, allow_last: bool) -> Result<Value, PatchE
     let parent = doc.pointer_mut(parent).ok_or(PatchError::InvalidPointer)?;
 
     match *parent {
-        Value::Object(ref mut obj) => {
-            match obj.remove(last.as_str()) {
-                None => Err(PatchError::InvalidPointer),
-                Some(val) => Ok(val),
-            }
-        }
+        Value::Object(ref mut obj) => match obj.remove(last.as_str()) {
+            None => Err(PatchError::InvalidPointer),
+            Some(val) => Ok(val),
+        },
         Value::Array(ref mut arr) if allow_last && last == "-" => Ok(arr.pop().unwrap()),
         Value::Array(ref mut arr) => {
             let idx = parse_index(last.as_str(), arr.len())?;
@@ -379,7 +422,6 @@ fn apply_patches(doc: &mut Value, patches: &[PatchOperation]) -> Result<(), Patc
         }
     }
 }
-
 
 /// Patch provided JSON document (given as `serde_json::Value`) in place.
 /// Operations are applied in unsafe manner. If any of the operations fails, all previous

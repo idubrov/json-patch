@@ -1,7 +1,7 @@
-use serde_json::{Value, Map};
+use serde_json::{Map, Value};
 use super::rand::Rng;
 use super::util;
-use super::super::{PatchOperation, RemoveOperation, AddOperation, Patch};
+use super::super::{AddOperation, Patch, PatchOperation, RemoveOperation};
 
 pub struct Params {
     pub array_size: usize,
@@ -81,9 +81,9 @@ pub fn gen_add_remove_patches<R: Rng>(
         let mut ops = Vec::new();
         for _ in 0..operations {
             let path = &rnd.choose(&leafs).unwrap();
-            ops.push(PatchOperation::Remove(
-                RemoveOperation { path: (*path).clone() },
-            ));
+            ops.push(PatchOperation::Remove(RemoveOperation {
+                path: (*path).clone(),
+            }));
             ops.push(PatchOperation::Add(AddOperation {
                 path: (*path).clone(),
                 value: Value::Null,

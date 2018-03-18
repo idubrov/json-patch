@@ -1,5 +1,5 @@
 use super::super::{merge, patch, Patch};
-use std::{io, fs};
+use std::{fs, io};
 use serde_json;
 use serde_json::Value;
 use std::fmt::Write;
@@ -28,8 +28,7 @@ fn run_case(doc: Value, patches: Value, merge_patch: bool) -> Result<Value, Stri
         patch(&mut actual, &patches)
             .map_err(|e| {
                 assert_eq!(
-                    doc,
-                    actual,
+                    doc, actual,
                     "no changes should be made to the original document"
                 );
                 e
@@ -84,22 +83,18 @@ pub fn all_leafs(value: &Value) -> Vec<String> {
 
 fn collect_leafs(value: &Value, prefix: &mut String, result: &mut Vec<String>) {
     match *value {
-        Value::Array(ref arr) => {
-            for (idx, val) in arr.iter().enumerate() {
-                let l = prefix.len();
-                write!(prefix, "/{}", idx).unwrap();
-                collect_leafs(val, prefix, result);
-                prefix.truncate(l);
-            }
-        }
-        Value::Object(ref map) => {
-            for (key, val) in map.iter() {
-                let l = prefix.len();
-                write!(prefix, "/{}", key).unwrap();
-                collect_leafs(val, prefix, result);
-                prefix.truncate(l);
-            }
-        }
+        Value::Array(ref arr) => for (idx, val) in arr.iter().enumerate() {
+            let l = prefix.len();
+            write!(prefix, "/{}", idx).unwrap();
+            collect_leafs(val, prefix, result);
+            prefix.truncate(l);
+        },
+        Value::Object(ref map) => for (key, val) in map.iter() {
+            let l = prefix.len();
+            write!(prefix, "/{}", key).unwrap();
+            collect_leafs(val, prefix, result);
+            prefix.truncate(l);
+        },
         _ => {
             result.push(prefix.clone());
         }
