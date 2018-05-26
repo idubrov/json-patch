@@ -1,5 +1,6 @@
 use serde_json::{Map, Value};
 use super::rand::Rng;
+use super::rand::distributions::Alphanumeric;
 use super::util;
 use super::super::{AddOperation, Patch, PatchOperation, RemoveOperation};
 
@@ -25,7 +26,7 @@ impl Default for Params {
 
 fn rand_str<R: Rng>(rng: &mut R, max_len: usize) -> String {
     let len = rng.gen::<usize>() % max_len + 1;
-    rng.gen_ascii_chars().take(len).collect()
+    rng.sample_iter(&Alphanumeric).take(len).collect()
 }
 
 fn rand_literal<R: Rng>(rng: &mut R, value_size: usize) -> Value {

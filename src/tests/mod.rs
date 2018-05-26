@@ -91,7 +91,7 @@ fn merge_tests() {
 #[cfg(feature = "nightly")]
 #[bench]
 fn bench_add_removes(b: &mut Bencher) {
-    let mut rng = rand::StdRng::from_seed(&[0]);
+    let mut rng = rand::StdRng::from_seed(Default::default());
     let params = generator::Params {
         ..Default::default()
     };
@@ -111,7 +111,7 @@ fn bench_add_removes(b: &mut Bencher) {
 #[cfg(feature = "nightly")]
 #[bench]
 fn bench_add_removes_unsafe(b: &mut Bencher) {
-    let mut rng = rand::StdRng::from_seed(&[0]);
+    let mut rng = rand::StdRng::from_seed(Default::default());
     let params = generator::Params {
         ..Default::default()
     };

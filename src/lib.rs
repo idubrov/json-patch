@@ -95,7 +95,7 @@ use std::error::Error;
 
 /// Representation of JSON Patch (list of patch operations)
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct Patch(Vec<PatchOperation>);
+pub struct Patch(pub Vec<PatchOperation>);
 
 /// JSON Patch 'add' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -516,6 +516,12 @@ pub fn merge(doc: &mut Value, patch: &Value) {
         }
     }
 }
+
+#[cfg(feature = "diff")]
+mod diff;
+
+#[cfg(feature = "diff")]
+pub use diff::diff;
 
 #[cfg(test)]
 mod tests;

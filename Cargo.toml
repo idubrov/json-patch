@@ -10,15 +10,26 @@ license = "MIT/Apache-2.0"
 readme = "README.md"
 
 [features]
+default = ["diff"]
 nightly = []
+diff = ["treediff"]
 
 [dependencies]
-serde = "1.0.15"
-serde_json = "1.0.4"
-serde_derive = "1.0.15"
+serde = "1.0.61"
+serde_derive = "1.0.61"
+serde_json = "1.0.17"
+
+[dependencies.treediff]
+version = "3.0.1"
+features = ["with-serde-json"]
+optional = true
 
 [dev-dependencies]
-rand = "0.3.17"
+rand = "0.5.0"
+
+[dev-dependencies.serde_json]
+version = "1.0.17"
+features = ["preserve_order"]
 
 [package.metadata.release]
 pre-release-hook = "./update-readme.sh"
