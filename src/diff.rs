@@ -44,7 +44,7 @@ impl<'a> treediff::Delegate<'a, treediff::value::Key, Value> for PatchDiffer {
         self.pop();
     }
 
-    fn added<'b>(&mut self, k: &treediff::value::Key, v: &Value) {
+    fn added(&mut self, k: &treediff::value::Key, v: &Value) {
         self.push(k);
         self.patch.0.push(super::PatchOperation::Add(super::AddOperation {
             path: self.path.clone(),
