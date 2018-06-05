@@ -30,6 +30,3 @@ rand = "0.5.0"
 [dev-dependencies.serde_json]
 version = "1.0.17"
 features = ["preserve_order"]
-
-[package.metadata.release]
-pre-release-hook = "./update-readme.sh"
