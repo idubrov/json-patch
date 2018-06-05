@@ -1,2 +1,1 @@
-sign-commit = true
 pre-release-hook = "./update-readme.sh"
