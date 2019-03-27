@@ -81,7 +81,6 @@
 //! }));
 //! # }
 //! ```
-#![cfg_attr(feature = "nightly", feature(test))]
 #![deny(warnings)]
 #![warn(missing_docs)]
 #[macro_use]
@@ -90,8 +89,8 @@ extern crate serde_derive;
 extern crate serde_json;
 
 use serde_json::{Map, Value};
-use std::{fmt, mem};
 use std::error::Error;
+use std::{fmt, mem};
 
 /// Representation of JSON Patch (list of patch operations)
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -100,41 +99,60 @@ pub struct Patch(pub Vec<PatchOperation>);
 /// JSON Patch 'add' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct AddOperation {
+    /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
+    /// within the target document where the operation is performed.
     pub path: String,
+    /// Value to add to the target location.
     pub value: Value,
 }
 
 /// JSON Patch 'remove' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct RemoveOperation {
+    /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
+    /// within the target document where the operation is performed.
     pub path: String,
 }
 
 /// JSON Patch 'replace' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct ReplaceOperation {
+    /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
+    /// within the target document where the operation is performed.
     pub path: String,
+    /// Value to replace with.
     pub value: Value,
 }
 
 /// JSON Patch 'move' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct MoveOperation {
+    /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
+    /// to move value from.
     pub from: String,
+    /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
+    /// within the target document where the operation is performed.
     pub path: String,
 }
 
 /// JSON Patch 'copy' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct CopyOperation {
+    /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
+    /// to copy value from.
     pub from: String,
+    /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
+    /// within the target document where the operation is performed.
     pub path: String,
 }
 
 /// JSON Patch 'test' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct TestOperation {
+    /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
+    /// within the target document where the operation is performed.
     pub path: String,
+    /// Value to test against.
     pub value: Value,
 }
 
@@ -426,7 +444,7 @@ fn apply_patches(doc: &mut Value, patches: &[PatchOperation]) -> Result<(), Patc
 /// Patch provided JSON document (given as `serde_json::Value`) in place.
 /// Operations are applied in unsafe manner. If any of the operations fails, all previous
 /// operations are not reverted.
-pub unsafe fn patch_unsafe(doc: &mut Value, patch: &Patch) -> Result<(), PatchError> {
+pub fn patch_unsafe(doc: &mut Value, patch: &Patch) -> Result<(), PatchError> {
     use PatchOperation::*;
     for op in &patch.0 {
         match *op {

@@ -38,29 +38,34 @@ impl<'a> treediff::Delegate<'a, treediff::value::Key, Value> for PatchDiffer {
 
     fn removed<'b>(&mut self, k: &'b treediff::value::Key, _v: &'a Value) {
         self.push(k);
-        self.patch.0.push(super::PatchOperation::Remove(super::RemoveOperation {
-            path: self.path.clone(),
-        }));
+        self.patch
+            .0
+            .push(super::PatchOperation::Remove(super::RemoveOperation {
+                path: self.path.clone(),
+            }));
         self.pop();
     }
 
     fn added(&mut self, k: &treediff::value::Key, v: &Value) {
         self.push(k);
-        self.patch.0.push(super::PatchOperation::Add(super::AddOperation {
-            path: self.path.clone(),
-            value: v.clone(),
-        }));
+        self.patch
+            .0
+            .push(super::PatchOperation::Add(super::AddOperation {
+                path: self.path.clone(),
+                value: v.clone(),
+            }));
         self.pop();
     }
-    
+
     fn modified(&mut self, _old: &'a Value, new: &'a Value) {
-        self.patch.0.push(super::PatchOperation::Replace(super::ReplaceOperation {
-            path: self.path.clone(),
-            value: new.clone(),
-        }));
+        self.patch
+            .0
+            .push(super::PatchOperation::Replace(super::ReplaceOperation {
+                path: self.path.clone(),
+                value: new.clone(),
+            }));
     }
 }
-
 
 /// Diff two JSON documents and generate a JSON Patch (RFC 6902).
 ///
@@ -123,17 +128,25 @@ mod tests {
     pub fn replace_all() {
         let left = json!({"title": "Hello!"});
         let p = super::diff(&left, &Value::Null);
-        assert_eq!(p, ::from_value(json!([
-            { "op": "replace", "path": "/", "value": null },
-        ])).unwrap());
+        assert_eq!(
+            p,
+            ::from_value(json!([
+                { "op": "replace", "path": "/", "value": null },
+            ]))
+            .unwrap()
+        );
     }
 
     #[test]
     pub fn add_all() {
         let right = json!({"title": "Hello!"});
         let p = super::diff(&Value::Null, &right);
-        assert_eq!(p, ::from_value(json!([
-            { "op": "replace", "path": "/", "value": { "title": "Hello!" } },
-        ])).unwrap());
+        assert_eq!(
+            p,
+            ::from_value(json!([
+                { "op": "replace", "path": "/", "value": { "title": "Hello!" } },
+            ]))
+            .unwrap()
+        );
     }
 }

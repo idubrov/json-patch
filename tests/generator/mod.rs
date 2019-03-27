@@ -1,8 +1,8 @@
-use serde_json::{Map, Value};
-use super::rand::Rng;
 use super::rand::distributions::Alphanumeric;
-use super::util;
-use super::super::{AddOperation, Patch, PatchOperation, RemoveOperation};
+use super::rand::Rng;
+use super::{AddOperation, Patch, PatchOperation, RemoveOperation};
+use serde_json::{Map, Value};
+use std::fmt::Write;
 
 pub struct Params {
     pub array_size: usize,
@@ -76,7 +76,7 @@ pub fn gen_add_remove_patches<R: Rng>(
     patches: usize,
     operations: usize,
 ) -> Vec<Patch> {
-    let leafs = util::all_leafs(value);
+    let leafs = all_leafs(value);
     let mut vec = Vec::new();
     for _ in 0..patches {
         let mut ops = Vec::new();
@@ -93,4 +93,34 @@ pub fn gen_add_remove_patches<R: Rng>(
         vec.push(Patch(ops));
     }
     vec
+}
+
+fn all_leafs(value: &Value) -> Vec<String> {
+    let mut result = Vec::new();
+    collect_leafs(value, &mut String::new(), &mut result);
+    result
+}
+
+fn collect_leafs(value: &Value, prefix: &mut String, result: &mut Vec<String>) {
+    match *value {
+        Value::Array(ref arr) => {
+            for (idx, val) in arr.iter().enumerate() {
+                let l = prefix.len();
+                write!(prefix, "/{}", idx).unwrap();
+                collect_leafs(val, prefix, result);
+                prefix.truncate(l);
+            }
+        }
+        Value::Object(ref map) => {
+            for (key, val) in map.iter() {
+                let l = prefix.len();
+                write!(prefix, "/{}", key).unwrap();
+                collect_leafs(val, prefix, result);
+                prefix.truncate(l);
+            }
+        }
+        _ => {
+            result.push(prefix.clone());
+        }
+    }
 }

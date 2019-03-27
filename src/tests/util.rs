@@ -1,8 +1,8 @@
 use super::super::{merge, patch, Patch};
-use std::{fs, io};
 use serde_json;
 use serde_json::Value;
 use std::fmt::Write;
+use std::{fs, io};
 
 #[derive(Debug, Deserialize)]
 struct TestCase {
@@ -71,32 +71,6 @@ pub fn run_specs(path: &str) {
                 println!("failed with '{}'", err);
                 tc.error.expect("patch expected to succeed");
             }
-        }
-    }
-}
-
-pub fn all_leafs(value: &Value) -> Vec<String> {
-    let mut result = Vec::new();
-    collect_leafs(value, &mut String::new(), &mut result);
-    result
-}
-
-fn collect_leafs(value: &Value, prefix: &mut String, result: &mut Vec<String>) {
-    match *value {
-        Value::Array(ref arr) => for (idx, val) in arr.iter().enumerate() {
-            let l = prefix.len();
-            write!(prefix, "/{}", idx).unwrap();
-            collect_leafs(val, prefix, result);
-            prefix.truncate(l);
-        },
-        Value::Object(ref map) => for (key, val) in map.iter() {
-            let l = prefix.len();
-            write!(prefix, "/{}", key).unwrap();
-            collect_leafs(val, prefix, result);
-            prefix.truncate(l);
-        },
-        _ => {
-            result.push(prefix.clone());
         }
     }
 }

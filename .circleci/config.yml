@@ -8,9 +8,9 @@ jobs:
     steps:
       - checkout
       - run: cargo +stable build
-      - run: cargo +stable test --all
+      - run: cargo +stable test --all-tagrets
       - run: cargo build
-      - run: cargo test --all
+      - run: cargo test --all-targets --features=nightly
       - run: cargo clippy
       - run: cargo kcov
       - run:
