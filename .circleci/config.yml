@@ -5,6 +5,7 @@ jobs:
       - image: xd009642/tarpaulin
     steps:
       - checkout
+      - run: rustup toolchain install stable
       - run: cargo +stable build
       - run: cargo +stable test --all-targets
       - run: cargo build
