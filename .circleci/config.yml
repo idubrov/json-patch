@@ -11,7 +11,7 @@ jobs:
       - run: cargo +stable test --all-targets
       - run: cargo build
       - run: cargo clippy
-      - run: cargo tarpaulin --all-targets --out Xml
+      - run: cargo tarpaulin --out Xml
       - run:
           name: Uploading code coverage
           command: |
