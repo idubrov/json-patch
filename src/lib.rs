@@ -100,42 +100,42 @@ pub struct Patch(pub Vec<PatchOperation>);
 /// JSON Patch 'add' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct AddOperation {
-    path: String,
-    value: Value,
+    pub path: String,
+    pub value: Value,
 }
 
 /// JSON Patch 'remove' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct RemoveOperation {
-    path: String,
+    pub path: String,
 }
 
 /// JSON Patch 'replace' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct ReplaceOperation {
-    path: String,
-    value: Value,
+    pub path: String,
+    pub value: Value,
 }
 
 /// JSON Patch 'move' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct MoveOperation {
-    from: String,
-    path: String,
+    pub from: String,
+    pub path: String,
 }
 
 /// JSON Patch 'copy' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct CopyOperation {
-    from: String,
-    path: String,
+    pub from: String,
+    pub path: String,
 }
 
 /// JSON Patch 'test' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct TestOperation {
-    path: String,
-    value: Value,
+    pub path: String,
+    pub value: Value,
 }
 
 /// JSON Patch single patch operation
