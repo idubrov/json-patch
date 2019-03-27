@@ -6,6 +6,7 @@ jobs:
     steps:
       - checkout
       - run: rustup toolchain install stable
+      - run: rustup component add clippy
       - run: cargo +stable build
       - run: cargo +stable test --all-targets
       - run: cargo build
