@@ -1,5 +1,3 @@
-extern crate treediff;
-
 use serde_json::Value;
 
 struct PatchDiffer {
@@ -139,7 +137,7 @@ mod tests {
         let p = super::diff(&left, &Value::Null);
         assert_eq!(
             p,
-            ::from_value(json!([
+            serde_json::from_value(json!([
                 { "op": "replace", "path": "/", "value": null },
             ]))
             .unwrap()
@@ -152,7 +150,7 @@ mod tests {
         let p = super::diff(&Value::Null, &right);
         assert_eq!(
             p,
-            ::from_value(json!([
+            serde_json::from_value(json!([
                 { "op": "replace", "path": "/", "value": { "title": "Hello!" } },
             ]))
             .unwrap()
@@ -166,7 +164,7 @@ mod tests {
         let p = super::diff(&left, &right);
         assert_eq!(
             p,
-            ::from_value(json!([
+            serde_json::from_value(json!([
                 { "op": "remove", "path": "/0" },
                 { "op": "remove", "path": "/0" },
             ]))
@@ -181,7 +179,7 @@ mod tests {
         let p = super::diff(&left, &right);
         assert_eq!(
             p,
-            ::from_value(json!([
+            serde_json::from_value(json!([
                 { "op": "remove", "path": "/1" },
                 { "op": "remove", "path": "/1" },
             ]))
@@ -195,7 +193,7 @@ mod tests {
         let p = super::diff(&left, &right);
         assert_eq!(
             p,
-            ::from_value(json!([
+            serde_json::from_value(json!([
                 { "op": "add", "path": "/hello", "value": "bye" },
                 { "op": "remove", "path": "/0" },
                 { "op": "remove", "path": "/0" },

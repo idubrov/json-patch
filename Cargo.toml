@@ -8,6 +8,7 @@ description = "RFC 6902, JavaScript Object Notation (JSON) Patch"
 repository = "https://github.com/idubrov/json-patch"
 license = "MIT/Apache-2.0"
 readme = "README.md"
+edition = "2018"
 
 [features]
 default = ["diff"]
