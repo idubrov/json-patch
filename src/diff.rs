@@ -5,6 +5,7 @@ use serde_json::Value;
 struct PatchDiffer {
     path: String,
     patch: super::Patch,
+    shift: usize,
 }
 
 impl PatchDiffer {
@@ -12,18 +13,19 @@ impl PatchDiffer {
         Self {
             path: "/".to_string(),
             patch: super::Patch(Vec::new()),
+            shift: 0,
         }
     }
 }
 
 impl<'a> treediff::Delegate<'a, treediff::value::Key, Value> for PatchDiffer {
-    fn push<'b>(&mut self, key: &'b treediff::value::Key) {
+    fn push(&mut self, key: &treediff::value::Key) {
         use std::fmt::Write;
         if self.path.len() != 1 {
             self.path.push('/');
         }
         match *key {
-            treediff::value::Key::Index(idx) => write!(self.path, "{}", idx).unwrap(),
+            treediff::value::Key::Index(idx) => write!(self.path, "{}", idx - self.shift).unwrap(),
             treediff::value::Key::String(ref key) => self.path += key,
         }
     }
@@ -34,19 +36,26 @@ impl<'a> treediff::Delegate<'a, treediff::value::Key, Value> for PatchDiffer {
             pos = 1;
         }
         self.path.truncate(pos);
+        self.shift = 0;
     }
 
     fn removed<'b>(&mut self, k: &'b treediff::value::Key, _v: &'a Value) {
+        let len = self.path.len();
         self.push(k);
         self.patch
             .0
             .push(super::PatchOperation::Remove(super::RemoveOperation {
                 path: self.path.clone(),
             }));
-        self.pop();
+        // Shift indices, we are deleting array elements
+        if let treediff::value::Key::Index(_) = k {
+            self.shift += 1;
+        }
+        self.path.truncate(len);
     }
 
     fn added(&mut self, k: &treediff::value::Key, v: &Value) {
+        let len = self.path.len();
         self.push(k);
         self.patch
             .0
@@ -54,7 +63,7 @@ impl<'a> treediff::Delegate<'a, treediff::value::Key, Value> for PatchDiffer {
                 path: self.path.clone(),
                 value: v.clone(),
             }));
-        self.pop();
+        self.path.truncate(len);
     }
 
     fn modified(&mut self, _old: &'a Value, new: &'a Value) {
@@ -145,6 +154,51 @@ mod tests {
             p,
             ::from_value(json!([
                 { "op": "replace", "path": "/", "value": { "title": "Hello!" } },
+            ]))
+            .unwrap()
+        );
+    }
+
+    #[test]
+    pub fn remove_all() {
+        let left = json!(["hello", "bye"]);
+        let right = json!([]);
+        let p = super::diff(&left, &right);
+        assert_eq!(
+            p,
+            ::from_value(json!([
+                { "op": "remove", "path": "/0" },
+                { "op": "remove", "path": "/0" },
+            ]))
+            .unwrap()
+        );
+    }
+
+    #[test]
+    pub fn remove_tail() {
+        let left = json!(["hello", "bye", "hi"]);
+        let right = json!(["hello"]);
+        let p = super::diff(&left, &right);
+        assert_eq!(
+            p,
+            ::from_value(json!([
+                { "op": "remove", "path": "/1" },
+                { "op": "remove", "path": "/1" },
+            ]))
+            .unwrap()
+        );
+    }
+    #[test]
+    pub fn replace_object() {
+        let left = json!(["hello", "bye"]);
+        let right = json!({"hello": "bye"});
+        let p = super::diff(&left, &right);
+        assert_eq!(
+            p,
+            ::from_value(json!([
+                { "op": "add", "path": "/hello", "value": "bye" },
+                { "op": "remove", "path": "/0" },
+                { "op": "remove", "path": "/0" },
             ]))
             .unwrap()
         );
