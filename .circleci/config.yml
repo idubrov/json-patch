@@ -2,17 +2,34 @@ version: 2
 jobs:
   build:
     docker:
-      - image: xd009642/tarpaulin
+      - image: rust
     steps:
       - checkout
-      - run: rustup toolchain install stable
       - run: rustup component add clippy
-      - run: cargo +stable build
-      - run: cargo +stable test --all-targets
       - run: cargo build
+      - run: cargo test --all-targets
       - run: cargo clippy
-      - run: cargo tarpaulin --out Xml
+#      - run: cargo tarpaulin --out Xml
+#      - run:
+#          name: Uploading code coverage
+#          command: |
+#              bash <(curl -s https://codecov.io/bash)
+  # https://github.com/xd009642/tarpaulin/issues/77#issuecomment-515626043
+  coverage:
+    machine: true
+    steps:
+      - checkout
       - run:
-          name: Uploading code coverage
-          command: |
-              bash <(curl -s https://codecov.io/bash)
+          name: cargo tarpaulin (via Docker)
+          command: docker run --rm -ti -v "`pwd`:/volume" -e CODECOV_TOKEN=${CODECOV_TOKEN} --security-opt seccomp=unconfined xd009642/tarpaulin bash -c "cargo tarpaulin --release --ignore-tests -o Xml && bash <(curl -s https://codecov.io/bash)"
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - build
+      - coverage:
+          requires:
+            - build
+          filters:
+            branches:
+              only: master
