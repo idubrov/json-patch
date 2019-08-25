@@ -83,11 +83,10 @@
 //! ```
 #![deny(warnings)]
 #![warn(missing_docs)]
-#[macro_use]
-extern crate serde_derive;
 #[cfg_attr(test, macro_use)]
 extern crate serde_json;
 
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::error::Error;
 use std::{fmt, mem};

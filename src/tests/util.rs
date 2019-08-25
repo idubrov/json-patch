@@ -1,5 +1,5 @@
-use super::super::{merge, patch, Patch};
-use serde_json;
+use crate::{merge, patch, Patch};
+use serde::Deserialize;
 use serde_json::Value;
 use std::fmt::Write;
 use std::{fs, io};
