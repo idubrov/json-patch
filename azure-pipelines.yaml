@@ -13,11 +13,6 @@ jobs:
     parameters:
       name: test_stable
       toolchain: stable
-      features: "subvert_stable_guarantees"
-      steps:
-        - script: |
-            cargo test --features "unsafe_test_runner subvert_stable_guarantees" --test datatest_stable_unsafe
-          displayName: cargo test --features "unsafe_test_runner subvert_stable_guarantees" --test datatest_stable_unsafe
   - template: ci/job-test.yml
     parameters:
       name: test_nightly
