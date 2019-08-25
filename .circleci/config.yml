@@ -6,9 +6,11 @@ jobs:
     steps:
       - checkout
       - run: rustup component add clippy
+      - run: rustup component add rustfmt
       - run: cargo build
       - run: cargo test --all-targets
-      - run: cargo clippy
+      - run: cargo clippy --all --all-targets
+      - run: cargo fmt -- --check
 #      - run: cargo tarpaulin --out Xml
 #      - run:
 #          name: Uploading code coverage

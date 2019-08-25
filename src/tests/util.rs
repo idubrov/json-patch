@@ -1,4 +1,3 @@
-use crate::{merge, patch, Patch};
 use serde::Deserialize;
 use serde_json::Value;
 use std::fmt::Write;
@@ -17,24 +16,33 @@ struct TestCase {
     merge: bool,
 }
 
-fn run_case(doc: Value, patches: Value, merge_patch: bool) -> Result<Value, String> {
+fn run_case(doc: &Value, patches: &Value, merge_patch: bool) -> Result<Value, String> {
     let mut actual = doc.clone();
     if merge_patch {
-        merge(&mut actual, &patches);
+        crate::merge(&mut actual, &patches);
     } else {
-        let patches: Patch = serde_json::from_value(patches).map_err(|e| e.to_string())?;
+        let patches: crate::Patch =
+            serde_json::from_value(patches.clone()).map_err(|e| e.to_string())?;
 
         // Patch and verify that in case of error document wasn't changed
-        patch(&mut actual, &patches)
+        crate::patch(&mut actual, &patches)
             .map_err(|e| {
                 assert_eq!(
-                    doc, actual,
+                    *doc, actual,
                     "no changes should be made to the original document"
                 );
                 e
             })
             .map_err(|e| e.to_string())?;
     }
+    Ok(actual)
+}
+
+fn run_case_patch_unsafe(doc: &Value, patches: &Value) -> Result<Value, String> {
+    let mut actual = doc.clone();
+    let patches: crate::Patch =
+        serde_json::from_value(patches.clone()).map_err(|e| e.to_string())?;
+    crate::patch_unsafe(&mut actual, &patches).map_err(|e| e.to_string())?;
     Ok(actual)
 }
 
@@ -56,20 +64,39 @@ pub fn run_specs(path: &str) {
             continue;
         }
 
-        match run_case(tc.doc, tc.patch, tc.merge) {
+        match run_case(&tc.doc, &tc.patch, tc.merge) {
             Ok(actual) => {
                 if let Some(ref error) = tc.error {
                     println!("expected to fail with '{}'", error);
                     panic!("expected to fail, got document {:?}", actual);
                 }
                 println!();
-                if let Some(expected) = tc.expected {
-                    assert_eq!(expected, actual);
+                if let Some(ref expected) = tc.expected {
+                    assert_eq!(*expected, actual);
                 }
             }
             Err(err) => {
                 println!("failed with '{}'", err);
-                tc.error.expect("patch expected to succeed");
+                tc.error.as_ref().expect("patch expected to succeed");
+            }
+        }
+
+        if !tc.merge {
+            match run_case_patch_unsafe(&tc.doc, &tc.patch) {
+                Ok(actual) => {
+                    if let Some(ref error) = tc.error {
+                        println!("expected to fail with '{}'", error);
+                        panic!("expected to fail, got document {:?}", actual);
+                    }
+                    println!();
+                    if let Some(ref expected) = tc.expected {
+                        assert_eq!(*expected, actual);
+                    }
+                }
+                Err(err) => {
+                    println!("failed with '{}'", err);
+                    tc.error.as_ref().expect("patch expected to succeed");
+                }
             }
         }
     }
