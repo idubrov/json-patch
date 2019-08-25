@@ -24,7 +24,7 @@ impl<'a> treediff::Delegate<'a, treediff::value::Key, Value> for PatchDiffer {
         }
         match *key {
             treediff::value::Key::Index(idx) => write!(self.path, "{}", idx - self.shift).unwrap(),
-            treediff::value::Key::String(ref key) => self.path += key,
+            treediff::value::Key::String(ref key) => append_path(&mut self.path, key),
         }
     }
 
@@ -71,6 +71,19 @@ impl<'a> treediff::Delegate<'a, treediff::value::Key, Value> for PatchDiffer {
                 path: self.path.clone(),
                 value: new.clone(),
             }));
+    }
+}
+
+fn append_path(path: &mut String, key: &str) {
+    path.reserve(key.len());
+    for ch in key.chars() {
+        if ch == '~' {
+            *path += "~0";
+        } else if ch == '/' {
+            *path += "~1";
+        } else {
+            path.push(ch);
+        }
     }
 }
 
@@ -200,5 +213,21 @@ mod tests {
             ]))
             .unwrap()
         );
+    }
+
+    #[test]
+    fn escape_json_keys() {
+        let mut left = json!({
+            "/slashed/path": 1
+        });
+        let right = json!({
+            "/slashed/path": 2,
+        });
+        let patch = super::diff(&left, &right);
+
+        eprintln!("{:?}", patch);
+
+        crate::patch(&mut left, &patch).unwrap();
+        assert_eq!(left, right);
     }
 }
