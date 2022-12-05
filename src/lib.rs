@@ -195,7 +195,7 @@ impl Error for PatchError {
 
 impl fmt::Display for PatchError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(fmt)
+        self.to_string().fmt(fmt)
     }
 }
 
