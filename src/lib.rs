@@ -92,11 +92,11 @@ use std::error::Error;
 use std::{fmt, mem};
 
 /// Representation of JSON Patch (list of patch operations)
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Patch(pub Vec<PatchOperation>);
 
 /// JSON Patch 'add' operation representation
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct AddOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
@@ -106,7 +106,7 @@ pub struct AddOperation {
 }
 
 /// JSON Patch 'remove' operation representation
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct RemoveOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
@@ -114,7 +114,7 @@ pub struct RemoveOperation {
 }
 
 /// JSON Patch 'replace' operation representation
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ReplaceOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
@@ -124,7 +124,7 @@ pub struct ReplaceOperation {
 }
 
 /// JSON Patch 'move' operation representation
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct MoveOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// to move value from.
@@ -135,7 +135,7 @@ pub struct MoveOperation {
 }
 
 /// JSON Patch 'copy' operation representation
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct CopyOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// to copy value from.
@@ -146,7 +146,7 @@ pub struct CopyOperation {
 }
 
 /// JSON Patch 'test' operation representation
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct TestOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
@@ -156,7 +156,7 @@ pub struct TestOperation {
 }
 
 /// JSON Patch single patch operation
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(tag = "op")]
 #[serde(rename_all = "lowercase")]
 pub enum PatchOperation {
@@ -184,8 +184,8 @@ pub enum PatchError {
     TestFailed,
 }
 
-impl Error for PatchError {
-    fn description(&self) -> &str {
+impl PatchError {
+    fn desc(&self) -> &str {
         match *self {
             PatchError::InvalidPointer => "invalid pointer",
             PatchError::TestFailed => "test failed",
@@ -193,9 +193,15 @@ impl Error for PatchError {
     }
 }
 
+impl Error for PatchError {
+    fn description(&self) -> &str {
+        self.desc()
+    }
+}
+
 impl fmt::Display for PatchError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        self.to_string().fmt(fmt)
+        self.desc().fmt(fmt)
     }
 }
 
@@ -223,7 +229,7 @@ fn split_pointer(pointer: &str) -> Result<(&str, String), PatchError> {
 }
 
 fn add(doc: &mut Value, path: &str, value: Value) -> Result<Option<Value>, PatchError> {
-    if path == "" {
+    if path.is_empty() {
         return Ok(Some(mem::replace(doc, value)));
     }
 
