@@ -81,7 +81,6 @@
 //! }));
 //! # }
 //! ```
-#![deny(warnings)]
 #![warn(missing_docs)]
 #[cfg_attr(test, macro_use)]
 extern crate serde_json;
