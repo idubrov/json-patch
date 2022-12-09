@@ -9,7 +9,7 @@ struct PatchDiffer {
 impl PatchDiffer {
     fn new() -> Self {
         Self {
-            path: "/".to_string(),
+            path: "".to_string(),
             patch: super::Patch(Vec::new()),
             shift: 0,
         }
@@ -19,9 +19,7 @@ impl PatchDiffer {
 impl<'a> treediff::Delegate<'a, treediff::value::Key, Value> for PatchDiffer {
     fn push(&mut self, key: &treediff::value::Key) {
         use std::fmt::Write;
-        if self.path.len() != 1 {
-            self.path.push('/');
-        }
+        self.path.push('/');
         match *key {
             treediff::value::Key::Index(idx) => write!(self.path, "{}", idx - self.shift).unwrap(),
             treediff::value::Key::String(ref key) => append_path(&mut self.path, key),
@@ -29,10 +27,7 @@ impl<'a> treediff::Delegate<'a, treediff::value::Key, Value> for PatchDiffer {
     }
 
     fn pop(&mut self) {
-        let mut pos = self.path.rfind('/').unwrap_or(0);
-        if pos == 0 {
-            pos = 1;
-        }
+        let pos = self.path.rfind('/').unwrap_or(0);
         self.path.truncate(pos);
         self.shift = 0;
     }
@@ -151,10 +146,29 @@ mod tests {
         assert_eq!(
             p,
             serde_json::from_value(json!([
-                { "op": "replace", "path": "/", "value": null },
+                { "op": "replace", "path": "", "value": null },
             ]))
             .unwrap()
         );
+        let mut left = json!({"title": "Hello!"});
+        crate::patch(&mut left, &p).unwrap();
+    }
+
+    #[test]
+    pub fn diff_empty_key() {
+        let left = json!({"title": "Something", "": "Hello!"});
+        let right = json!({"title": "Something", "": "Bye!"});
+        let p = super::diff(&left, &right);
+        assert_eq!(
+            p,
+            serde_json::from_value(json!([
+                { "op": "replace", "path": "/", "value": "Bye!" },
+            ]))
+            .unwrap()
+        );
+        let mut left_patched = json!({"title": "Something", "": "Hello!"});
+        crate::patch(&mut left_patched, &p).unwrap();
+        assert_eq!(left_patched, right);
     }
 
     #[test]
@@ -164,7 +178,7 @@ mod tests {
         assert_eq!(
             p,
             serde_json::from_value(json!([
-                { "op": "replace", "path": "/", "value": { "title": "Hello!" } },
+                { "op": "replace", "path": "", "value": { "title": "Hello!" } },
             ]))
             .unwrap()
         );
