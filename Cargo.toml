@@ -8,7 +8,7 @@ description = "RFC 6902, JavaScript Object Notation (JSON) Patch"
 repository = "https://github.com/idubrov/json-patch"
 license = "MIT/Apache-2.0"
 readme = "README.md"
-edition = "2018"
+edition = "2021"
 
 [features]
 default = ["diff"]
@@ -16,14 +16,14 @@ nightly = []
 diff = ["treediff"]
 
 [dependencies]
-serde = { version = "1.0.99", features = ["derive"] }
-serde_json = "1.0.40"
+serde = { version = "1.0.149", features = ["derive"] }
+serde_json = "1.0.89"
 
 [dependencies.treediff]
-version = "3.0.1"
+version = "4.0.2"
 features = ["with-serde-json"]
 optional = true
 
 [dev-dependencies]
-rand = "0.5.0"
-serde_json = { version = "1.0.40", features = ["preserve_order"] }
+rand = "0.8.5"
+serde_json = { version = "1.0.89", features = ["preserve_order"] }
