@@ -1,6 +1,6 @@
-use super::rand::distributions::Alphanumeric;
-use super::rand::Rng;
-use super::{AddOperation, Patch, PatchOperation, RemoveOperation};
+use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation};
+use rand::distributions::Alphanumeric;
+use rand::Rng;
 use serde_json::{Map, Value};
 use std::fmt::Write;
 

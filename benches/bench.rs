@@ -1,13 +1,9 @@
 #![feature(test)]
-#![cfg(feature = "nightly")]
-extern crate json_patch;
-extern crate rand;
-extern crate serde_json;
 extern crate test;
 
-use self::rand::SeedableRng;
-use self::test::Bencher;
 use json_patch::*;
+use rand::SeedableRng;
+use test::Bencher;
 
 mod generator;
 
