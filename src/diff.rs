@@ -89,10 +89,8 @@ fn append_path(path: &mut String, key: &str) {
 ///
 /// ```rust
 /// #[macro_use]
-/// extern crate serde_json;
-/// extern crate json_patch;
-///
-/// use json_patch::{patch, diff, from_value};
+/// use json_patch::{Patch, patch, diff};
+/// use serde_json::{json, from_value};
 ///
 /// # pub fn main() {
 /// let left = json!({
@@ -116,7 +114,7 @@ fn append_path(path: &mut String, key: &str) {
 /// });
 ///
 /// let p = diff(&left, &right);
-/// assert_eq!(p, from_value(json!([
+/// assert_eq!(p, from_value::<Patch>(json!([
 ///   { "op": "remove", "path": "/author/familyName" },
 ///   { "op": "remove", "path": "/tags/1" },
 ///   { "op": "replace", "path": "/title", "value": "Hello!" },
@@ -232,14 +230,12 @@ mod tests {
     #[test]
     fn escape_json_keys() {
         let mut left = json!({
-            "/slashed/path": 1
+            "/slashed/path/with/~": 1
         });
         let right = json!({
-            "/slashed/path": 2,
+            "/slashed/path/with/~": 2,
         });
         let patch = super::diff(&left, &right);
-
-        eprintln!("{:?}", patch);
 
         crate::patch(&mut left, &patch).unwrap();
         assert_eq!(left, right);

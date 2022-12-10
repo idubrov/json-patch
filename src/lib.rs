@@ -14,11 +14,8 @@
 //!
 //! ```rust
 //! #[macro_use]
-//! extern crate serde_json;
-//! extern crate json_patch;
-//!
-//! use json_patch::patch;
-//! use serde_json::from_str;
+//! use json_patch::{Patch, patch};
+//! use serde_json::{from_value, json};
 //!
 //! # pub fn main() {
 //! let mut doc = json!([
@@ -26,10 +23,10 @@
 //!     { "name": "Maxim" }
 //! ]);
 //!
-//! let p = from_str(r#"[
+//! let p: Patch = from_value(json!([
 //!   { "op": "test", "path": "/0/name", "value": "Andrew" },
 //!   { "op": "add", "path": "/0/happy", "value": true }
-//! ]"#).unwrap();
+//! ])).unwrap();
 //!
 //! patch(&mut doc, &p).unwrap();
 //! assert_eq!(doc, json!([
@@ -44,10 +41,8 @@
 //!
 //! ```rust
 //! #[macro_use]
-//! extern crate serde_json;
-//! extern crate json_patch;
-//!
 //! use json_patch::merge;
+//! use serde_json::json;
 //!
 //! # pub fn main() {
 //! let mut doc = json!({
@@ -87,6 +82,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::borrow::Cow;
 use thiserror::Error;
+
+#[cfg(feature = "diff")]
+mod diff;
+
+#[cfg(feature = "diff")]
+pub use self::diff::diff;
 
 /// Representation of JSON Patch (list of patch operations)
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -181,13 +182,18 @@ pub enum PatchOperation {
 
 /// This type represents all possible errors that can occur when applying JSON patch
 #[derive(Debug, Error)]
-enum PatchErrorKind {
+#[non_exhaustive]
+pub enum PatchErrorKind {
+    /// `test` operation failed because values did not match.
     #[error("value did not match")]
     TestFailed,
+    /// `from` JSON pointer in a `move` or a `copy` operation was incorrect.
     #[error("\"from\" path is invalid")]
     InvalidFromPointer,
+    /// `path` JSON pointer is incorrect.
     #[error("path is invalid")]
     InvalidPointer,
+    /// `move` operation failed because target is inside the `from` location.
     #[error("cannot move the value inside itself")]
     CannotMoveInsideItself,
 }
@@ -195,10 +201,14 @@ enum PatchErrorKind {
 /// This type represents all possible errors that can occur when applying JSON patch
 #[derive(Debug, Error)]
 #[error("Operation '/{operation}' failed at path '{path}': {kind}")]
+#[non_exhaustive]
 pub struct PatchError {
-    operation: usize,
-    path: String,
-    kind: PatchErrorKind,
+    /// Index of the operation that has failed.
+    pub operation: usize,
+    /// `path` of the operation.
+    pub path: String,
+    /// Kind of the error.
+    pub kind: PatchErrorKind,
 }
 
 fn translate_error(kind: PatchErrorKind, operation: usize, path: &str) -> PatchError {
@@ -321,50 +331,6 @@ fn test(doc: &Value, path: &str, expected: &Value) -> Result<(), PatchErrorKind>
     }
 }
 
-/// Create JSON Patch from JSON Value
-/// # Examples
-///
-/// Create patch from `serde_json::Value`:
-///
-/// ```rust
-/// #[macro_use]
-/// extern crate serde_json;
-/// extern crate json_patch;
-///
-/// use json_patch::{Patch, from_value};
-///
-/// # pub fn main() {
-/// let patch_value = json!([
-///   { "op": "test", "path": "/0/name", "value": "Andrew" },
-///   { "op": "add", "path": "/0/happy", "value": true }
-/// ]);
-/// let patch: Patch = from_value(patch_value).unwrap();
-/// # }
-/// ```
-///
-/// Create patch from string:
-///
-/// ```rust
-/// #[macro_use]
-/// extern crate serde_json;
-/// extern crate json_patch;
-///
-/// use json_patch::Patch;
-/// use serde_json::from_str;
-///
-/// # pub fn main() {
-/// let patch_str = r#"[
-///   { "op": "test", "path": "/0/name", "value": "Andrew" },
-///   { "op": "add", "path": "/0/happy", "value": true }
-/// ]"#;
-/// let patch: Patch = from_str(patch_str).unwrap();
-/// # }
-/// ```
-pub fn from_value(value: Value) -> Result<Patch, serde_json::Error> {
-    let patch = serde_json::from_value::<Vec<PatchOperation>>(value)?;
-    Ok(Patch(patch))
-}
-
 /// Patch provided JSON document (given as `serde_json::Value`) in-place. If any of the patch is
 /// failed, all previous operations are reverted. In case of internal error resulting in panic,
 /// document might be left in inconsistent state.
@@ -374,11 +340,8 @@ pub fn from_value(value: Value) -> Result<Patch, serde_json::Error> {
 ///
 /// ```rust
 /// #[macro_use]
-/// extern crate serde_json;
-/// extern crate json_patch;
-///
-/// use json_patch::patch;
-/// use serde_json::from_str;
+/// use json_patch::{Patch, patch};
+/// use serde_json::{from_value, json};
 ///
 /// # pub fn main() {
 /// let mut doc = json!([
@@ -386,10 +349,10 @@ pub fn from_value(value: Value) -> Result<Patch, serde_json::Error> {
 ///     { "name": "Maxim" }
 /// ]);
 ///
-/// let p = from_str(r#"[
+/// let p: Patch = from_value(json!([
 ///   { "op": "test", "path": "/0/name", "value": "Andrew" },
 ///   { "op": "add", "path": "/0/happy", "value": true }
-/// ]"#).unwrap();
+/// ])).unwrap();
 ///
 /// patch(&mut doc, &p).unwrap();
 /// assert_eq!(doc, json!([
@@ -480,10 +443,8 @@ fn apply_patches(
 ///
 /// ```rust
 /// #[macro_use]
-/// extern crate serde_json;
-/// extern crate json_patch;
-///
 /// use json_patch::merge;
+/// use serde_json::json;
 ///
 /// # pub fn main() {
 /// let mut doc = json!({
@@ -535,12 +496,3 @@ pub fn merge(doc: &mut Value, patch: &Value) {
         }
     }
 }
-
-#[cfg(feature = "diff")]
-mod diff;
-
-#[cfg(feature = "diff")]
-pub use self::diff::diff;
-
-#[cfg(test)]
-mod tests;
