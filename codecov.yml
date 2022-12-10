@@ -5,5 +5,5 @@ coverage:
         target: auto
         threshold: 1%
         base: auto 
-        paths:
-          - "src"
+ignore:
+  - "benches"
