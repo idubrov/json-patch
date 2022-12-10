@@ -1,6 +1,6 @@
 use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation};
 use rand::distributions::Alphanumeric;
-use rand::Rng;
+use rand::prelude::*;
 use serde_json::{Map, Value};
 use std::fmt::Write;
 
@@ -26,7 +26,10 @@ impl Default for Params {
 
 fn rand_str<R: Rng>(rng: &mut R, max_len: usize) -> String {
     let len = rng.gen::<usize>() % max_len + 1;
-    rng.sample_iter(&Alphanumeric).take(len).collect()
+    rng.sample_iter(&Alphanumeric)
+        .take(len)
+        .map(char::from)
+        .collect()
 }
 
 fn rand_literal<R: Rng>(rng: &mut R, value_size: usize) -> Value {
@@ -81,7 +84,7 @@ pub fn gen_add_remove_patches<R: Rng>(
     for _ in 0..patches {
         let mut ops = Vec::new();
         for _ in 0..operations {
-            let path = &rnd.choose(&leafs).unwrap();
+            let path = leafs.choose(rnd).unwrap();
             ops.push(PatchOperation::Remove(RemoveOperation {
                 path: (*path).clone(),
             }));

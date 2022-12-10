@@ -9,7 +9,7 @@ mod generator;
 
 #[bench]
 fn bench_add_removes(b: &mut Bencher) {
-    let mut rng = rand::StdRng::from_seed(Default::default());
+    let mut rng = rand::rngs::StdRng::from_seed(Default::default());
     let params = generator::Params {
         ..Default::default()
     };
@@ -19,7 +19,7 @@ fn bench_add_removes(b: &mut Bencher) {
     b.iter(|| {
         let mut doc = doc.clone();
         let mut result = Ok(());
-        for ref p in &patches {
+        for p in &patches {
             // Patch mutable
             result = result.and_then(|_| patch(&mut doc, p));
         }

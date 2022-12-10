@@ -137,7 +137,7 @@ pub fn diff(left: &Value, right: &Value) -> super::Patch {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::Value;
+    use serde_json::{json, Value};
 
     #[test]
     pub fn replace_all() {

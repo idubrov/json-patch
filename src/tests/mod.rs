@@ -1,6 +1,8 @@
 #![allow(unused)]
 extern crate rand;
 
+use serde_json::json;
+
 mod util;
 
 use super::*;
