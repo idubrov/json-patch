@@ -82,17 +82,23 @@
 //! # }
 //! ```
 #![warn(missing_docs)]
-#[cfg_attr(test, macro_use)]
-extern crate serde_json;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::error::Error;
-use std::{fmt, mem};
+use std::borrow::Cow;
+use thiserror::Error;
 
 /// Representation of JSON Patch (list of patch operations)
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Patch(pub Vec<PatchOperation>);
+
+impl std::ops::Deref for Patch {
+    type Target = [PatchOperation];
+
+    fn deref(&self) -> &[PatchOperation] {
+        &self.0
+    }
+}
 
 /// JSON Patch 'add' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -174,103 +180,111 @@ pub enum PatchOperation {
 }
 
 /// This type represents all possible errors that can occur when applying JSON patch
-#[derive(Debug)]
-pub enum PatchError {
-    /// One of the pointers in the patch is invalid
-    InvalidPointer,
-
-    /// 'test' operation failed
+#[derive(Debug, Error)]
+enum PatchErrorKind {
+    #[error("value did not match")]
     TestFailed,
+    #[error("\"from\" path is invalid")]
+    InvalidFromPointer,
+    #[error("path is invalid")]
+    InvalidPointer,
+    #[error("cannot move the value inside itself")]
+    CannotMoveInsideItself,
 }
 
-impl PatchError {
-    fn desc(&self) -> &str {
-        match *self {
-            PatchError::InvalidPointer => "invalid pointer",
-            PatchError::TestFailed => "test failed",
-        }
+/// This type represents all possible errors that can occur when applying JSON patch
+#[derive(Debug, Error)]
+#[error("Operation '/{operation}' failed at path '{path}': {kind}")]
+pub struct PatchError {
+    operation: usize,
+    path: String,
+    kind: PatchErrorKind,
+}
+
+fn translate_error(kind: PatchErrorKind, operation: usize, path: &str) -> PatchError {
+    PatchError {
+        operation,
+        path: path.to_owned(),
+        kind,
     }
 }
 
-impl Error for PatchError {
-    fn description(&self) -> &str {
-        self.desc()
+fn unescape(s: &str) -> Cow<str> {
+    if s.contains('~') {
+        Cow::Owned(s.replace("~1", "/").replace("~0", "~"))
+    } else {
+        Cow::Borrowed(s)
     }
 }
 
-impl fmt::Display for PatchError {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        self.desc().fmt(fmt)
-    }
-}
-
-fn parse_index(str: &str, len: usize) -> Result<usize, PatchError> {
+fn parse_index(str: &str, len: usize) -> Result<usize, PatchErrorKind> {
     // RFC 6901 prohibits leading zeroes in index
-    if str.starts_with('0') && str.len() != 1 {
-        return Err(PatchError::InvalidPointer);
+    if (str.starts_with('0') && str.len() != 1) || str.starts_with('+') {
+        return Err(PatchErrorKind::InvalidPointer);
     }
     match str.parse::<usize>() {
-        Ok(idx) if idx < len => Ok(idx),
-        _ => Err(PatchError::InvalidPointer),
+        Ok(index) if index < len => Ok(index),
+        _ => Err(PatchErrorKind::InvalidPointer),
     }
 }
 
-fn split_pointer(pointer: &str) -> Result<(&str, String), PatchError> {
+fn split_pointer(pointer: &str) -> Result<(&str, &str), PatchErrorKind> {
     pointer
         .rfind('/')
-        .ok_or(PatchError::InvalidPointer)
-        .map(|idx| {
-            (
-                &pointer[0..idx],
-                pointer[idx + 1..].replace("~1", "/").replace("~0", "~"),
-            )
-        })
+        .ok_or(PatchErrorKind::InvalidPointer)
+        .map(|idx| (&pointer[0..idx], &pointer[idx + 1..]))
 }
 
-fn add(doc: &mut Value, path: &str, value: Value) -> Result<Option<Value>, PatchError> {
+fn add(doc: &mut Value, path: &str, value: Value) -> Result<Option<Value>, PatchErrorKind> {
     if path.is_empty() {
-        return Ok(Some(mem::replace(doc, value)));
+        return Ok(Some(std::mem::replace(doc, value)));
     }
 
-    let (parent, last) = split_pointer(path)?;
-    let parent = doc.pointer_mut(parent).ok_or(PatchError::InvalidPointer)?;
+    let (parent, last_unescaped) = split_pointer(path)?;
+    let parent = doc
+        .pointer_mut(parent)
+        .ok_or(PatchErrorKind::InvalidPointer)?;
 
     match *parent {
-        Value::Object(ref mut obj) => Ok(obj.insert(last, value)),
-        Value::Array(ref mut arr) if last == "-" => {
+        Value::Object(ref mut obj) => Ok(obj.insert(unescape(last_unescaped).into_owned(), value)),
+        Value::Array(ref mut arr) if last_unescaped == "-" => {
             arr.push(value);
             Ok(None)
         }
         Value::Array(ref mut arr) => {
-            let idx = parse_index(last.as_str(), arr.len() + 1)?;
+            let idx = parse_index(last_unescaped, arr.len() + 1)?;
             arr.insert(idx, value);
             Ok(None)
         }
-        _ => Err(PatchError::InvalidPointer),
+        _ => Err(PatchErrorKind::InvalidPointer),
     }
 }
 
-fn remove(doc: &mut Value, path: &str, allow_last: bool) -> Result<Value, PatchError> {
-    let (parent, last) = split_pointer(path)?;
-    let parent = doc.pointer_mut(parent).ok_or(PatchError::InvalidPointer)?;
+fn remove(doc: &mut Value, path: &str, allow_last: bool) -> Result<Value, PatchErrorKind> {
+    let (parent, last_unescaped) = split_pointer(path)?;
+    let parent = doc
+        .pointer_mut(parent)
+        .ok_or(PatchErrorKind::InvalidPointer)?;
 
     match *parent {
-        Value::Object(ref mut obj) => match obj.remove(last.as_str()) {
-            None => Err(PatchError::InvalidPointer),
+        Value::Object(ref mut obj) => match obj.remove(unescape(last_unescaped).as_ref()) {
+            None => Err(PatchErrorKind::InvalidPointer),
             Some(val) => Ok(val),
         },
-        Value::Array(ref mut arr) if allow_last && last == "-" => Ok(arr.pop().unwrap()),
+        Value::Array(ref mut arr) if allow_last && last_unescaped == "-" => Ok(arr.pop().unwrap()),
         Value::Array(ref mut arr) => {
-            let idx = parse_index(last.as_str(), arr.len())?;
+            let idx = parse_index(last_unescaped, arr.len())?;
             Ok(arr.remove(idx))
         }
-        _ => Err(PatchError::InvalidPointer),
+        _ => Err(PatchErrorKind::InvalidPointer),
     }
 }
 
-fn replace(doc: &mut Value, path: &str, value: Value) -> Result<Value, PatchError> {
-    let target = doc.pointer_mut(path).ok_or(PatchError::InvalidPointer)?;
-    Ok(mem::replace(target, value))
+fn replace(doc: &mut Value, path: &str, value: Value) -> Result<Value, PatchErrorKind> {
+    let target = doc
+        .pointer_mut(path)
+        .ok_or(PatchErrorKind::InvalidPointer)?;
+    Ok(std::mem::replace(target, value))
 }
 
 fn mov(
@@ -278,26 +292,32 @@ fn mov(
     from: &str,
     path: &str,
     allow_last: bool,
-) -> Result<Option<Value>, PatchError> {
+) -> Result<Option<Value>, PatchErrorKind> {
     // Check we are not moving inside own child
     if path.starts_with(from) && path[from.len()..].starts_with('/') {
-        return Err(PatchError::InvalidPointer);
+        return Err(PatchErrorKind::CannotMoveInsideItself);
     }
-    let val = remove(doc, from, allow_last)?;
+    let val = remove(doc, from, allow_last).map_err(|err| match err {
+        PatchErrorKind::InvalidPointer => PatchErrorKind::InvalidFromPointer,
+        err => err,
+    })?;
     add(doc, path, val)
 }
 
-fn copy(doc: &mut Value, from: &str, path: &str) -> Result<Option<Value>, PatchError> {
-    let source = doc.pointer(from).ok_or(PatchError::InvalidPointer)?.clone();
+fn copy(doc: &mut Value, from: &str, path: &str) -> Result<Option<Value>, PatchErrorKind> {
+    let source = doc
+        .pointer(from)
+        .ok_or(PatchErrorKind::InvalidFromPointer)?
+        .clone();
     add(doc, path, source)
 }
 
-fn test(doc: &Value, path: &str, expected: &Value) -> Result<(), PatchError> {
-    let target = doc.pointer(path).ok_or(PatchError::InvalidPointer)?;
+fn test(doc: &Value, path: &str, expected: &Value) -> Result<(), PatchErrorKind> {
+    let target = doc.pointer(path).ok_or(PatchErrorKind::InvalidPointer)?;
     if *target == *expected {
         Ok(())
     } else {
-        Err(PatchError::TestFailed)
+        Err(PatchErrorKind::TestFailed)
     }
 }
 
@@ -379,13 +399,17 @@ pub fn from_value(value: Value) -> Result<Patch, serde_json::Error> {
 ///
 /// # }
 /// ```
-pub fn patch(doc: &mut Value, patch: &Patch) -> Result<(), PatchError> {
-    apply_patches(doc, &patch.0)
+pub fn patch(doc: &mut Value, patch: &[PatchOperation]) -> Result<(), PatchError> {
+    apply_patches(doc, 0, patch)
 }
 
 // Apply patches while tracking all the changes being made so they can be reverted back in case
 // subsequent patches fail. Uses stack recursion to keep the state.
-fn apply_patches(doc: &mut Value, patches: &[PatchOperation]) -> Result<(), PatchError> {
+fn apply_patches(
+    doc: &mut Value,
+    operation: usize,
+    patches: &[PatchOperation],
+) -> Result<(), PatchError> {
     let (patch, tail) = match patches.split_first() {
         None => return Ok(()),
         Some((patch, tail)) => (patch, tail),
@@ -393,83 +417,59 @@ fn apply_patches(doc: &mut Value, patches: &[PatchOperation]) -> Result<(), Patc
 
     match *patch {
         PatchOperation::Add(ref op) => {
-            let prev = add(doc, op.path.as_str(), op.value.clone())?;
-            apply_patches(doc, tail).map_err(move |e| {
+            let prev = add(doc, &op.path, op.value.clone())
+                .map_err(|e| translate_error(e, operation, &op.path))?;
+            apply_patches(doc, operation + 1, tail).map_err(move |e| {
                 match prev {
-                    None => remove(doc, op.path.as_str(), true).unwrap(),
-                    Some(v) => add(doc, op.path.as_str(), v).unwrap().unwrap(),
+                    None => remove(doc, &op.path, true).unwrap(),
+                    Some(v) => add(doc, &op.path, v).unwrap().unwrap(),
                 };
                 e
             })
         }
         PatchOperation::Remove(ref op) => {
-            let prev = remove(doc, op.path.as_str(), false)?;
-            apply_patches(doc, tail).map_err(move |e| {
-                assert!(add(doc, op.path.as_str(), prev).unwrap().is_none());
+            let prev = remove(doc, &op.path, false)
+                .map_err(|e| translate_error(e, operation, &op.path))?;
+            apply_patches(doc, operation + 1, tail).map_err(move |e| {
+                assert!(add(doc, &op.path, prev).unwrap().is_none());
                 e
             })
         }
         PatchOperation::Replace(ref op) => {
-            let prev = replace(doc, op.path.as_str(), op.value.clone())?;
-            apply_patches(doc, tail).map_err(move |e| {
-                replace(doc, op.path.as_str(), prev).unwrap();
+            let prev = replace(doc, &op.path, op.value.clone())
+                .map_err(|e| translate_error(e, operation, &op.path))?;
+            apply_patches(doc, operation + 1, tail).map_err(move |e| {
+                replace(doc, &op.path, prev).unwrap();
                 e
             })
         }
         PatchOperation::Move(ref op) => {
-            let prev = mov(doc, op.from.as_str(), op.path.as_str(), false)?;
-            apply_patches(doc, tail).map_err(move |e| {
-                mov(doc, op.path.as_str(), op.from.as_str(), true).unwrap();
+            let prev = mov(doc, op.from.as_str(), &op.path, false)
+                .map_err(|e| translate_error(e, operation, &op.path))?;
+            apply_patches(doc, operation + 1, tail).map_err(move |e| {
+                mov(doc, &op.path, op.from.as_str(), true).unwrap();
                 if let Some(prev) = prev {
-                    assert!(add(doc, op.path.as_str(), prev).unwrap().is_none());
+                    assert!(add(doc, &op.path, prev).unwrap().is_none());
                 }
                 e
             })
         }
         PatchOperation::Copy(ref op) => {
-            let prev = copy(doc, op.from.as_str(), op.path.as_str())?;
-            apply_patches(doc, tail).map_err(move |e| {
+            let prev = copy(doc, op.from.as_str(), &op.path)
+                .map_err(|e| translate_error(e, operation, &op.path))?;
+            apply_patches(doc, operation + 1, tail).map_err(move |e| {
                 match prev {
-                    None => remove(doc, op.path.as_str(), true).unwrap(),
-                    Some(v) => add(doc, op.path.as_str(), v).unwrap().unwrap(),
+                    None => remove(doc, &op.path, true).unwrap(),
+                    Some(v) => add(doc, &op.path, v).unwrap().unwrap(),
                 };
                 e
             })
         }
         PatchOperation::Test(ref op) => {
-            test(doc, op.path.as_str(), &op.value)?;
-            apply_patches(doc, tail)
+            test(doc, &op.path, &op.value).map_err(|e| translate_error(e, operation, &op.path))?;
+            apply_patches(doc, operation + 1, tail)
         }
     }
-}
-
-/// Patch provided JSON document (given as `serde_json::Value`) in place.
-/// Operations are applied in unsafe manner. If any of the operations fails, all previous
-/// operations are not reverted.
-pub fn patch_unsafe(doc: &mut Value, patch: &Patch) -> Result<(), PatchError> {
-    for op in &patch.0 {
-        match *op {
-            PatchOperation::Add(ref op) => {
-                add(doc, op.path.as_str(), op.value.clone())?;
-            }
-            PatchOperation::Remove(ref op) => {
-                remove(doc, op.path.as_str(), false)?;
-            }
-            PatchOperation::Replace(ref op) => {
-                replace(doc, op.path.as_str(), op.value.clone())?;
-            }
-            PatchOperation::Move(ref op) => {
-                mov(doc, op.from.as_str(), op.path.as_str(), false)?;
-            }
-            PatchOperation::Copy(ref op) => {
-                copy(doc, op.from.as_str(), op.path.as_str())?;
-            }
-            PatchOperation::Test(ref op) => {
-                test(doc, op.path.as_str(), &op.value)?;
-            }
-        };
-    }
-    Ok(())
 }
 
 /// Patch provided JSON document (given as `serde_json::Value`) in place with JSON Merge Patch

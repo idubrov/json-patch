@@ -1,6 +1,6 @@
 [![crates.io](https://img.shields.io/crates/v/json-patch.svg)](https://crates.io/crates/json-patch)
 [![crates.io](https://img.shields.io/crates/d/json-patch.svg)](https://crates.io/crates/json-patch)
-[![CircleCI](https://img.shields.io/circleci/project/github/idubrov/json-patch.svg)](https://circleci.com/gh/idubrov/json-patch)
+[![Build](https://github.com/idubrov/json-patch/actions/workflows/main.yml/badge.svg)](https://github.com/idubrov/json-patch/actions)
 [![Codecov](https://img.shields.io/codecov/c/github/idubrov/json-patch.svg)](https://codecov.io/gh/idubrov/json-patch)
 
 # {{crate}}
