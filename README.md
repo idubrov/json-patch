@@ -21,7 +21,7 @@ Create and patch document using JSON Patch:
 
 ```rust
 #[macro_use]
-use json_patch::patch;
+use json_patch::{Patch, patch};
 use serde_json::{from_value, json};
 
 let mut doc = json!([
@@ -29,7 +29,7 @@ let mut doc = json!([
     { "name": "Maxim" }
 ]);
 
-let p = from_value(json!([
+let p: Patch = from_value(json!([
   { "op": "test", "path": "/0/name", "value": "Andrew" },
   { "op": "add", "path": "/0/happy", "value": true }
 ])).unwrap();
