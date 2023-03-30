@@ -1,4 +1,4 @@
-use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation};
+use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation, TestOperation, CopyOperation, MoveOperation, ReplaceOperation};
 use serde_json::{from_str, from_value, json, Value};
 
 #[test]
@@ -51,4 +51,75 @@ fn serialize_patch() {
 
     let serialized = serde_json::to_string(&patch).unwrap();
     assert_eq!(serialized, s);
+}
+
+#[test]
+fn display_add_operation() {
+    let op = PatchOperation::Add(AddOperation {
+        path: String::from("/a/b/c"),
+        value: json!(["foo", "bar"]),
+    });
+    assert_eq!(op.to_string(), r#"{"op":"add","path":"/a/b/c","value":["foo","bar"]}"#);
+}
+
+#[test]
+fn display_remove_operation() {
+    let op = PatchOperation::Remove(RemoveOperation {
+        path: String::from("/a/b/c"),
+    });
+    assert_eq!(op.to_string(), r#"{"op":"remove","path":"/a/b/c"}"#);
+}
+
+#[test]
+fn display_replace_operation() {
+    let op = PatchOperation::Replace(ReplaceOperation {
+        path: String::from("/a/b/c"),
+        value: json!(42),
+    });
+    assert_eq!(op.to_string(), r#"{"op":"replace","path":"/a/b/c","value":42}"#);
+}
+
+#[test]
+fn display_move_operation() {
+    let op = PatchOperation::Move(MoveOperation {
+        from: String::from("/a/b/c"),
+        path: String::from("/a/b/d"),
+    });
+    assert_eq!(op.to_string(), r#"{"op":"move","from":"/a/b/c","path":"/a/b/d"}"#);
+}
+
+#[test]
+fn display_copy_operation() {
+    let op = PatchOperation::Copy(CopyOperation {
+        from: String::from("/a/b/d"),
+        path: String::from("/a/b/e"),
+    });
+    assert_eq!(op.to_string(), r#"{"op":"copy","from":"/a/b/d","path":"/a/b/e"}"#);
+}
+
+#[test]
+fn display_test_operation() {
+    let op = PatchOperation::Test(TestOperation {
+        path: String::from("/a/b/c"),
+        value: json!("foo"),
+    });
+    assert_eq!(op.to_string(), r#"{"op":"test","path":"/a/b/c","value":"foo"}"#);
+}
+
+#[test]
+fn display_patch() {
+    let patch = Patch(vec![
+        PatchOperation::Add(AddOperation {
+            path: String::from("/a/b/c"),
+            value: json!(["foo", "bar"]),
+        }),
+        PatchOperation::Remove(RemoveOperation {
+            path: String::from("/a/b/c"),
+        }),
+    ]);
+
+    assert_eq!(
+        patch.to_string(),
+        r#"[{"op":"add","path":"/a/b/c","value":["foo","bar"]},{"op":"remove","path":"/a/b/c"}]"#
+    );
 }
