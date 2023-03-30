@@ -80,8 +80,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use core::fmt;
-use std::{borrow::Cow, fmt::{Display, Formatter}};
+use std::{borrow::Cow, fmt::{self, Display, Formatter}};
 use thiserror::Error;
 
 #[cfg(feature = "diff")]
