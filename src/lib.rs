@@ -80,7 +80,8 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::borrow::Cow;
+use core::fmt;
+use std::{borrow::Cow, fmt::{Display, Formatter}};
 use thiserror::Error;
 
 #[cfg(feature = "diff")]
@@ -102,6 +103,18 @@ impl std::ops::Deref for Patch {
     }
 }
 
+impl Display for Patch {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let operations = self
+            .0
+            .iter()
+            .map(|op| op.to_string())
+            .collect::<Vec<String>>()
+            .join(",");
+        write!(f, "[{}]", operations)
+    }
+}
+
 /// JSON Patch 'add' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
@@ -114,6 +127,12 @@ pub struct AddOperation {
     pub value: Value,
 }
 
+impl Display for AddOperation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{\"op\":\"add\",\"path\":\"{}\",\"value\":{}}}", self.path, self.value)
+    }
+}
+
 /// JSON Patch 'remove' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
@@ -121,6 +140,12 @@ pub struct RemoveOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
     pub path: String,
+}
+
+impl Display for RemoveOperation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{\"op\":\"remove\",\"path\":\"{}\"}}", self.path)
+    }
 }
 
 /// JSON Patch 'replace' operation representation
@@ -135,6 +160,12 @@ pub struct ReplaceOperation {
     pub value: Value,
 }
 
+impl Display for ReplaceOperation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{\"op\":\"replace\",\"path\":\"{}\",\"value\":{}}}", self.path, self.value)
+    }
+}
+
 /// JSON Patch 'move' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
@@ -145,6 +176,12 @@ pub struct MoveOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
     pub path: String,
+}
+
+impl Display for MoveOperation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{\"op\":\"move\",\"from\":\"{}\",\"path\":\"{}\"}}", self.from, self.path)
+    }
 }
 
 /// JSON Patch 'copy' operation representation
@@ -159,6 +196,12 @@ pub struct CopyOperation {
     pub path: String,
 }
 
+impl Display for CopyOperation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{\"op\":\"copy\",\"from\":\"{}\",\"path\":\"{}\"}}", self.from, self.path)
+    }
+}
+
 /// JSON Patch 'test' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
@@ -169,6 +212,12 @@ pub struct TestOperation {
     /// Value to test against.
     #[cfg_attr(feature = "utoipa", schema(value_type = Object))]
     pub value: Value,
+}
+
+impl Display for TestOperation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{\"op\":\"test\",\"path\":\"{}\",\"value\":{}}}", self.path, self.value)
+    }
 }
 
 /// JSON Patch single patch operation
@@ -190,6 +239,20 @@ pub enum PatchOperation {
     /// 'test' operation
     Test(TestOperation),
 }
+
+impl Display for PatchOperation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            PatchOperation::Add(op) => op.fmt(f),
+            PatchOperation::Remove(op) => op.fmt(f),
+            PatchOperation::Replace(op) => op.fmt(f),
+            PatchOperation::Move(op) => op.fmt(f),
+            PatchOperation::Copy(op) => op.fmt(f),
+            PatchOperation::Test(op) => op.fmt(f),
+        }
+    }
+}
+
 
 /// This type represents all possible errors that can occur when applying JSON patch
 #[derive(Debug, Error)]
