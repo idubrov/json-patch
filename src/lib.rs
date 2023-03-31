@@ -79,7 +79,7 @@
 #![warn(missing_docs)]
 
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
+use serde_json::{Map, Value, json};
 use std::{borrow::Cow, fmt::{self, Display, Formatter}};
 use thiserror::Error;
 
@@ -128,7 +128,12 @@ pub struct AddOperation {
 
 impl Display for AddOperation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{\"op\":\"add\",\"path\":\"{}\",\"value\":{}}}", self.path, self.value)
+        let json_value = json!({
+            "op": "add",
+            "path": self.path,
+            "value": self.value,
+        });
+        write!(f, "{}", json_value)
     }
 }
 
@@ -143,7 +148,11 @@ pub struct RemoveOperation {
 
 impl Display for RemoveOperation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{\"op\":\"remove\",\"path\":\"{}\"}}", self.path)
+        let json_value = json!({
+            "op": "remove",
+            "path": self.path,
+        });
+        write!(f, "{}", json_value)
     }
 }
 
@@ -161,7 +170,12 @@ pub struct ReplaceOperation {
 
 impl Display for ReplaceOperation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{\"op\":\"replace\",\"path\":\"{}\",\"value\":{}}}", self.path, self.value)
+        let json_value = json!({
+            "op": "replace",
+            "path": self.path,
+            "value": self.value,
+        });
+        write!(f, "{}", json_value)
     }
 }
 
@@ -179,7 +193,12 @@ pub struct MoveOperation {
 
 impl Display for MoveOperation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{\"op\":\"move\",\"from\":\"{}\",\"path\":\"{}\"}}", self.from, self.path)
+        let json_value = json!({
+            "op": "move",
+            "from": self.from,
+            "path": self.path,
+        });
+        write!(f, "{}", json_value)
     }
 }
 
@@ -197,7 +216,12 @@ pub struct CopyOperation {
 
 impl Display for CopyOperation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{\"op\":\"copy\",\"from\":\"{}\",\"path\":\"{}\"}}", self.from, self.path)
+        let json_value = json!({
+            "op": "copy",
+            "from": self.from,
+            "path": self.path,
+        });
+        write!(f, "{}", json_value)
     }
 }
 
@@ -215,7 +239,12 @@ pub struct TestOperation {
 
 impl Display for TestOperation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{\"op\":\"test\",\"path\":\"{}\",\"value\":{}}}", self.path, self.value)
+        let json_value = json!({
+            "op": "test",
+            "path": self.path,
+            "value": self.value,
+        });
+        write!(f, "{}", json_value)
     }
 }
 
