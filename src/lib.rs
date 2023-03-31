@@ -79,8 +79,11 @@
 #![warn(missing_docs)]
 
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value, json};
-use std::{borrow::Cow, fmt::{self, Display, Formatter}};
+use serde_json::{Map, Value};
+use std::{
+    borrow::Cow,
+    fmt::{self, Display, Formatter},
+};
 use thiserror::Error;
 
 #[cfg(feature = "diff")]
@@ -89,28 +92,51 @@ mod diff;
 #[cfg(feature = "diff")]
 pub use self::diff::diff;
 
+struct WriteAdapter<'a>(&'a mut dyn fmt::Write);
+
+impl<'a> std::io::Write for WriteAdapter<'a> {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, std::io::Error> {
+        let s = std::str::from_utf8(buf).unwrap();
+        self.0
+            .write_str(s)
+            .map_err(|_| std::io::Error::from(std::io::ErrorKind::Other))?;
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> Result<(), std::io::Error> {
+        Ok(())
+    }
+}
+
+macro_rules! impl_display {
+    ($name:ident) => {
+        impl Display for $name {
+            fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+                let alternate = f.alternate();
+                if alternate {
+                    serde_json::to_writer_pretty(WriteAdapter(f), self)
+                        .map_err(|_| std::fmt::Error)?;
+                } else {
+                    serde_json::to_writer(WriteAdapter(f), self).map_err(|_| std::fmt::Error)?;
+                }
+                Ok(())
+            }
+        }
+    };
+}
+
 /// Representation of JSON Patch (list of patch operations)
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct Patch(pub Vec<PatchOperation>);
+
+impl_display!(Patch);
 
 impl std::ops::Deref for Patch {
     type Target = [PatchOperation];
 
     fn deref(&self) -> &[PatchOperation] {
         &self.0
-    }
-}
-
-impl Display for Patch {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let operations = self
-            .0
-            .iter()
-            .map(|op| op.to_string())
-            .collect::<Vec<String>>()
-            .join(",");
-        write!(f, "[{}]", operations)
     }
 }
 
@@ -126,16 +152,7 @@ pub struct AddOperation {
     pub value: Value,
 }
 
-impl Display for AddOperation {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let json_value = json!({
-            "op": "add",
-            "path": self.path,
-            "value": self.value,
-        });
-        write!(f, "{}", json_value)
-    }
-}
+impl_display!(AddOperation);
 
 /// JSON Patch 'remove' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -146,15 +163,7 @@ pub struct RemoveOperation {
     pub path: String,
 }
 
-impl Display for RemoveOperation {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let json_value = json!({
-            "op": "remove",
-            "path": self.path,
-        });
-        write!(f, "{}", json_value)
-    }
-}
+impl_display!(RemoveOperation);
 
 /// JSON Patch 'replace' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -168,16 +177,7 @@ pub struct ReplaceOperation {
     pub value: Value,
 }
 
-impl Display for ReplaceOperation {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let json_value = json!({
-            "op": "replace",
-            "path": self.path,
-            "value": self.value,
-        });
-        write!(f, "{}", json_value)
-    }
-}
+impl_display!(ReplaceOperation);
 
 /// JSON Patch 'move' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -191,16 +191,7 @@ pub struct MoveOperation {
     pub path: String,
 }
 
-impl Display for MoveOperation {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let json_value = json!({
-            "op": "move",
-            "from": self.from,
-            "path": self.path,
-        });
-        write!(f, "{}", json_value)
-    }
-}
+impl_display!(MoveOperation);
 
 /// JSON Patch 'copy' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -214,16 +205,7 @@ pub struct CopyOperation {
     pub path: String,
 }
 
-impl Display for CopyOperation {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let json_value = json!({
-            "op": "copy",
-            "from": self.from,
-            "path": self.path,
-        });
-        write!(f, "{}", json_value)
-    }
-}
+impl_display!(CopyOperation);
 
 /// JSON Patch 'test' operation representation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -237,16 +219,7 @@ pub struct TestOperation {
     pub value: Value,
 }
 
-impl Display for TestOperation {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let json_value = json!({
-            "op": "test",
-            "path": self.path,
-            "value": self.value,
-        });
-        write!(f, "{}", json_value)
-    }
-}
+impl_display!(TestOperation);
 
 /// JSON Patch single patch operation
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -268,19 +241,7 @@ pub enum PatchOperation {
     Test(TestOperation),
 }
 
-impl Display for PatchOperation {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            PatchOperation::Add(op) => op.fmt(f),
-            PatchOperation::Remove(op) => op.fmt(f),
-            PatchOperation::Replace(op) => op.fmt(f),
-            PatchOperation::Move(op) => op.fmt(f),
-            PatchOperation::Copy(op) => op.fmt(f),
-            PatchOperation::Test(op) => op.fmt(f),
-        }
-    }
-}
-
+impl_display!(PatchOperation);
 
 /// This type represents all possible errors that can occur when applying JSON patch
 #[derive(Debug, Error)]
