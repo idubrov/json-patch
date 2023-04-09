@@ -148,7 +148,6 @@ pub struct AddOperation {
     /// within the target document where the operation is performed.
     pub path: String,
     /// Value to add to the target location.
-    #[cfg_attr(feature = "utoipa", schema(value_type = Object))]
     pub value: Value,
 }
 
@@ -173,7 +172,6 @@ pub struct ReplaceOperation {
     /// within the target document where the operation is performed.
     pub path: String,
     /// Value to replace with.
-    #[cfg_attr(feature = "utoipa", schema(value_type = Object))]
     pub value: Value,
 }
 
@@ -215,7 +213,6 @@ pub struct TestOperation {
     /// within the target document where the operation is performed.
     pub path: String,
     /// Value to test against.
-    #[cfg_attr(feature = "utoipa", schema(value_type = Object))]
     pub value: Value,
 }
 
