@@ -423,7 +423,7 @@ fn test(doc: &Value, path: &str, expected: &Value) -> Result<(), PatchErrorKind>
 /// # }
 /// ```
 pub fn patch(doc: &mut Value, patch: &[PatchOperation]) -> Result<(), PatchError> {
-    let mut undo_stack = Vec::new();
+    let mut undo_stack = Vec::with_capacity(patch.len());
     if let Err(e) = apply_patches(doc, patch, Some(&mut undo_stack)) {
         if let Err(e) = undo_patches(doc, &undo_stack) {
             unreachable!("unable to undo applied patches: {e}")
