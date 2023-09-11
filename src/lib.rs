@@ -423,76 +423,166 @@ fn test(doc: &Value, path: &str, expected: &Value) -> Result<(), PatchErrorKind>
 /// # }
 /// ```
 pub fn patch(doc: &mut Value, patch: &[PatchOperation]) -> Result<(), PatchError> {
-    apply_patches(doc, 0, patch)
+    let mut undo_stack = Vec::new();
+    if let Err(e) = apply_patches(doc, patch, Some(&mut undo_stack)) {
+        if let Err(e) = undo_patches(doc, &undo_stack) {
+            unreachable!("unable to undo applied patches: {e}")
+        }
+        return Err(e);
+    }
+    Ok(())
+}
+
+/// Patch provided JSON document (given as `serde_json::Value`) in-place. Different from [`patch`]
+/// if any patch failed, the document is left in an inconsistent state. In case of internal error
+/// resulting in panic, document might be left in inconsistent state.
+///
+/// # Example
+/// Create and patch document:
+///
+/// ```rust
+/// #[macro_use]
+/// use json_patch::{Patch, patch_unsafe};
+/// use serde_json::{from_value, json};
+///
+/// # pub fn main() {
+/// let mut doc = json!([
+///     { "name": "Andrew" },
+///     { "name": "Maxim" }
+/// ]);
+///
+/// let p: Patch = from_value(json!([
+///   { "op": "test", "path": "/0/name", "value": "Andrew" },
+///   { "op": "add", "path": "/0/happy", "value": true }
+/// ])).unwrap();
+///
+/// patch_unsafe(&mut doc, &p).unwrap();
+/// assert_eq!(doc, json!([
+///   { "name": "Andrew", "happy": true },
+///   { "name": "Maxim" }
+/// ]));
+///
+/// # }
+/// ```
+pub fn patch_unsafe(doc: &mut Value, patch: &[PatchOperation]) -> Result<(), PatchError> {
+    apply_patches(doc, patch, None)
+}
+
+/// Undoes operations performed by `apply_patches`. This is useful to recover the original document
+/// in case of an error.
+fn undo_patches(doc: &mut Value, undo_patches: &[PatchOperation]) -> Result<(), PatchError> {
+    for (operation, patch) in undo_patches.iter().enumerate().rev() {
+        match patch {
+            PatchOperation::Add(op) => {
+                add(doc, &op.path, op.value.clone())
+                    .map_err(|e| translate_error(e, operation, &op.path))?;
+            }
+            PatchOperation::Remove(op) => {
+                remove(doc, &op.path, true).map_err(|e| translate_error(e, operation, &op.path))?;
+            }
+            PatchOperation::Replace(op) => {
+                replace(doc, &op.path, op.value.clone())
+                    .map_err(|e| translate_error(e, operation, &op.path))?;
+            }
+            PatchOperation::Move(op) => {
+                mov(doc, op.from.as_str(), &op.path, true)
+                    .map_err(|e| translate_error(e, operation, &op.path))?;
+            }
+            PatchOperation::Copy(op) => {
+                copy(doc, op.from.as_str(), &op.path)
+                    .map_err(|e| translate_error(e, operation, &op.path))?;
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    Ok(())
 }
 
 // Apply patches while tracking all the changes being made so they can be reverted back in case
-// subsequent patches fail. Uses stack recursion to keep the state.
+// subsequent patches fail. The inverse of all state changes is recorded in the `undo_stack` which
+// can be reapplied using `undo_patches` to get back to the original document.
 fn apply_patches(
     doc: &mut Value,
-    operation: usize,
     patches: &[PatchOperation],
+    undo_stack: Option<&mut Vec<PatchOperation>>,
 ) -> Result<(), PatchError> {
-    let (patch, tail) = match patches.split_first() {
-        None => return Ok(()),
-        Some((patch, tail)) => (patch, tail),
-    };
-
-    match *patch {
-        PatchOperation::Add(ref op) => {
-            let prev = add(doc, &op.path, op.value.clone())
-                .map_err(|e| translate_error(e, operation, &op.path))?;
-            apply_patches(doc, operation + 1, tail).map_err(move |e| {
-                match prev {
-                    None => remove(doc, &op.path, true).unwrap(),
-                    Some(v) => add(doc, &op.path, v).unwrap().unwrap(),
-                };
-                e
-            })
-        }
-        PatchOperation::Remove(ref op) => {
-            let prev = remove(doc, &op.path, false)
-                .map_err(|e| translate_error(e, operation, &op.path))?;
-            apply_patches(doc, operation + 1, tail).map_err(move |e| {
-                assert!(add(doc, &op.path, prev).unwrap().is_none());
-                e
-            })
-        }
-        PatchOperation::Replace(ref op) => {
-            let prev = replace(doc, &op.path, op.value.clone())
-                .map_err(|e| translate_error(e, operation, &op.path))?;
-            apply_patches(doc, operation + 1, tail).map_err(move |e| {
-                replace(doc, &op.path, prev).unwrap();
-                e
-            })
-        }
-        PatchOperation::Move(ref op) => {
-            let prev = mov(doc, op.from.as_str(), &op.path, false)
-                .map_err(|e| translate_error(e, operation, &op.path))?;
-            apply_patches(doc, operation + 1, tail).map_err(move |e| {
-                mov(doc, &op.path, op.from.as_str(), true).unwrap();
-                if let Some(prev) = prev {
-                    assert!(add(doc, &op.path, prev).unwrap().is_none());
+    for (operation, patch) in patches.iter().enumerate() {
+        match patch {
+            PatchOperation::Add(ref op) => {
+                let prev = add(doc, &op.path, op.value.clone())
+                    .map_err(|e| translate_error(e, operation, &op.path))?;
+                if let Some(&mut ref mut undo_stack) = undo_stack {
+                    undo_stack.push(match prev {
+                        None => PatchOperation::Remove(RemoveOperation {
+                            path: op.path.clone(),
+                        }),
+                        Some(v) => PatchOperation::Add(AddOperation {
+                            path: op.path.clone(),
+                            value: v,
+                        }),
+                    })
                 }
-                e
-            })
-        }
-        PatchOperation::Copy(ref op) => {
-            let prev = copy(doc, op.from.as_str(), &op.path)
-                .map_err(|e| translate_error(e, operation, &op.path))?;
-            apply_patches(doc, operation + 1, tail).map_err(move |e| {
-                match prev {
-                    None => remove(doc, &op.path, true).unwrap(),
-                    Some(v) => add(doc, &op.path, v).unwrap().unwrap(),
-                };
-                e
-            })
-        }
-        PatchOperation::Test(ref op) => {
-            test(doc, &op.path, &op.value).map_err(|e| translate_error(e, operation, &op.path))?;
-            apply_patches(doc, operation + 1, tail)
+            }
+            PatchOperation::Remove(ref op) => {
+                let prev = remove(doc, &op.path, false)
+                    .map_err(|e| translate_error(e, operation, &op.path))?;
+                if let Some(&mut ref mut undo_stack) = undo_stack {
+                    undo_stack.push(PatchOperation::Add(AddOperation {
+                        path: op.path.clone(),
+                        value: prev,
+                    }))
+                }
+            }
+            PatchOperation::Replace(ref op) => {
+                let prev = replace(doc, &op.path, op.value.clone())
+                    .map_err(|e| translate_error(e, operation, &op.path))?;
+                if let Some(&mut ref mut undo_stack) = undo_stack {
+                    undo_stack.push(PatchOperation::Replace(ReplaceOperation {
+                        path: op.path.clone(),
+                        value: prev,
+                    }))
+                }
+            }
+            PatchOperation::Move(ref op) => {
+                let prev = mov(doc, op.from.as_str(), &op.path, false)
+                    .map_err(|e| translate_error(e, operation, &op.path))?;
+                if let Some(&mut ref mut undo_stack) = undo_stack {
+                    if let Some(prev) = prev {
+                        undo_stack.push(PatchOperation::Add(AddOperation {
+                            path: op.path.clone(),
+                            value: prev,
+                        }));
+                    }
+                    undo_stack.push(PatchOperation::Move(MoveOperation {
+                        from: op.path.clone(),
+                        path: op.from.clone(),
+                    }));
+                }
+            }
+            PatchOperation::Copy(ref op) => {
+                let prev = copy(doc, op.from.as_str(), &op.path)
+                    .map_err(|e| translate_error(e, operation, &op.path))?;
+                if let Some(&mut ref mut undo_stack) = undo_stack {
+                    undo_stack.push(match prev {
+                        None => PatchOperation::Remove(RemoveOperation {
+                            path: op.path.clone(),
+                        }),
+                        Some(v) => PatchOperation::Add(AddOperation {
+                            path: op.path.clone(),
+                            value: v,
+                        }),
+                    })
+                }
+            }
+            PatchOperation::Test(ref op) => {
+                test(doc, &op.path, &op.value)
+                    .map_err(|e| translate_error(e, operation, &op.path))?;
+            }
         }
     }
+
+    Ok(())
 }
 
 /// Patch provided JSON document (given as `serde_json::Value`) in place with JSON Merge Patch
