@@ -32,7 +32,9 @@ fn schema() {
     )]
     struct ApiDoc;
 
-    let doc = ApiDoc::openapi().to_json().unwrap();
+    let mut doc = ApiDoc::openapi();
 
-    expectorate::assert_contents("tests/utoipa.json", &doc);
+    doc.info.version = "0.0.0".to_string();
+    let json = doc.to_pretty_json().unwrap();
+    expectorate::assert_contents("tests/utoipa.json", &json);
 }
