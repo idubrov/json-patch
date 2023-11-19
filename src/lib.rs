@@ -127,7 +127,7 @@ macro_rules! impl_display {
 }
 
 /// Representation of JSON Patch (list of patch operations)
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct Patch(pub Vec<PatchOperation>);
 
@@ -142,7 +142,7 @@ impl std::ops::Deref for Patch {
 }
 
 /// JSON Patch 'add' operation representation
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct AddOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
@@ -156,7 +156,7 @@ pub struct AddOperation {
 impl_display!(AddOperation);
 
 /// JSON Patch 'remove' operation representation
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct RemoveOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
@@ -168,7 +168,7 @@ pub struct RemoveOperation {
 impl_display!(RemoveOperation);
 
 /// JSON Patch 'replace' operation representation
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct ReplaceOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
@@ -182,7 +182,7 @@ pub struct ReplaceOperation {
 impl_display!(ReplaceOperation);
 
 /// JSON Patch 'move' operation representation
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct MoveOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
@@ -198,7 +198,7 @@ pub struct MoveOperation {
 impl_display!(MoveOperation);
 
 /// JSON Patch 'copy' operation representation
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct CopyOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
@@ -214,7 +214,7 @@ pub struct CopyOperation {
 impl_display!(CopyOperation);
 
 /// JSON Patch 'test' operation representation
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct TestOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
@@ -260,6 +260,12 @@ impl PatchOperation {
             Self::Copy(op) => &op.path,
             Self::Test(op) => &op.path,
         }
+    }
+}
+
+impl Default for PatchOperation {
+    fn default() -> Self {
+        PatchOperation::Test(TestOperation::default())
     }
 }
 
