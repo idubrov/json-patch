@@ -209,3 +209,15 @@ fn display_patch() {
 ]"#
     );
 }
+
+#[test]
+fn display_patch_default() {
+    let patch = Patch::default();
+    assert_eq!(patch.to_string(), r#"[]"#);
+}
+
+#[test]
+fn display_patch_operation_default() {
+    let op = PatchOperation::default();
+    assert_eq!(op.to_string(), r#"{"op":"test","path":"","value":null}"#);
+}
