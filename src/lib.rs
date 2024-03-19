@@ -147,6 +147,7 @@ impl std::ops::Deref for Patch {
 pub struct AddOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
+    #[cfg_attr(feature = "utoipa", schema(value_type = String))]
     pub path: Pointer,
     /// Value to add to the target location.
     pub value: Value,
@@ -160,6 +161,7 @@ impl_display!(AddOperation);
 pub struct RemoveOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
+    #[cfg_attr(feature = "utoipa", schema(value_type = String))]
     pub path: Pointer,
 }
 
@@ -171,6 +173,7 @@ impl_display!(RemoveOperation);
 pub struct ReplaceOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
+    #[cfg_attr(feature = "utoipa", schema(value_type = String))]
     pub path: Pointer,
     /// Value to replace with.
     pub value: Value,
@@ -184,9 +187,11 @@ impl_display!(ReplaceOperation);
 pub struct MoveOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// to move value from.
+    #[cfg_attr(feature = "utoipa", schema(value_type = String))]
     pub from: Pointer,
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
+    #[cfg_attr(feature = "utoipa", schema(value_type = String))]
     pub path: Pointer,
 }
 
@@ -198,9 +203,11 @@ impl_display!(MoveOperation);
 pub struct CopyOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// to copy value from.
+    #[cfg_attr(feature = "utoipa", schema(value_type = String))]
     pub from: Pointer,
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
+    #[cfg_attr(feature = "utoipa", schema(value_type = String))]
     pub path: Pointer,
 }
 
@@ -212,6 +219,7 @@ impl_display!(CopyOperation);
 pub struct TestOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
+    #[cfg_attr(feature = "utoipa", schema(value_type = String))]
     pub path: Pointer,
     /// Value to test against.
     pub value: Value,
