@@ -1,8 +1,8 @@
 use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation};
+use jsonptr::Pointer;
 use rand::distributions::Alphanumeric;
 use rand::prelude::*;
 use serde_json::{Map, Value};
-use std::fmt::Write;
 
 pub struct Params {
     pub array_size: usize,
@@ -98,28 +98,26 @@ pub fn gen_add_remove_patches<R: Rng>(
     vec
 }
 
-fn all_leafs(value: &Value) -> Vec<String> {
+fn all_leafs(value: &Value) -> Vec<Pointer> {
     let mut result = Vec::new();
-    collect_leafs(value, &mut String::new(), &mut result);
+    collect_leafs(value, &mut Pointer::root(), &mut result);
     result
 }
 
-fn collect_leafs(value: &Value, prefix: &mut String, result: &mut Vec<String>) {
+fn collect_leafs(value: &Value, prefix: &mut Pointer, result: &mut Vec<Pointer>) {
     match *value {
         Value::Array(ref arr) => {
             for (idx, val) in arr.iter().enumerate() {
-                let l = prefix.len();
-                write!(prefix, "/{}", idx).unwrap();
+                prefix.push_back(idx.into());
                 collect_leafs(val, prefix, result);
-                prefix.truncate(l);
+                prefix.pop_back();
             }
         }
         Value::Object(ref map) => {
             for (key, val) in map.iter() {
-                let l = prefix.len();
-                write!(prefix, "/{}", key).unwrap();
+                prefix.push_back(key.into());
                 collect_leafs(val, prefix, result);
-                prefix.truncate(l);
+                prefix.pop_back();
             }
         }
         _ => {

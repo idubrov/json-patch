@@ -1,54 +1,43 @@
+use jsonptr::Pointer;
 use serde_json::Value;
 
 struct PatchDiffer {
-    path: String,
+    path: Pointer,
     patch: super::Patch,
-    shift: usize,
 }
 
 impl PatchDiffer {
     fn new() -> Self {
         Self {
-            path: "".to_string(),
+            path: Pointer::root(),
             patch: super::Patch(Vec::new()),
-            shift: 0,
         }
     }
 }
 
 impl<'a> treediff::Delegate<'a, treediff::value::Key, Value> for PatchDiffer {
     fn push(&mut self, key: &treediff::value::Key) {
-        use std::fmt::Write;
-        self.path.push('/');
-        match *key {
-            treediff::value::Key::Index(idx) => write!(self.path, "{}", idx - self.shift).unwrap(),
-            treediff::value::Key::String(ref key) => append_path(&mut self.path, key),
+        match key {
+            treediff::value::Key::Index(idx) => self.path.push_back(idx.into()),
+            treediff::value::Key::String(key) => self.path.push_back(key.into()),
         }
     }
 
     fn pop(&mut self) {
-        let pos = self.path.rfind('/').unwrap_or(0);
-        self.path.truncate(pos);
-        self.shift = 0;
+        self.path.pop_back();
     }
 
     fn removed<'b>(&mut self, k: &'b treediff::value::Key, _v: &'a Value) {
-        let len = self.path.len();
         self.push(k);
         self.patch
             .0
             .push(super::PatchOperation::Remove(super::RemoveOperation {
                 path: self.path.clone(),
             }));
-        // Shift indices, we are deleting array elements
-        if let treediff::value::Key::Index(_) = k {
-            self.shift += 1;
-        }
-        self.path.truncate(len);
+        self.pop();
     }
 
     fn added(&mut self, k: &treediff::value::Key, v: &Value) {
-        let len = self.path.len();
         self.push(k);
         self.patch
             .0
@@ -56,7 +45,7 @@ impl<'a> treediff::Delegate<'a, treediff::value::Key, Value> for PatchDiffer {
                 path: self.path.clone(),
                 value: v.clone(),
             }));
-        self.path.truncate(len);
+        self.pop();
     }
 
     fn modified(&mut self, _old: &'a Value, new: &'a Value) {
@@ -66,19 +55,6 @@ impl<'a> treediff::Delegate<'a, treediff::value::Key, Value> for PatchDiffer {
                 path: self.path.clone(),
                 value: new.clone(),
             }));
-    }
-}
-
-fn append_path(path: &mut String, key: &str) {
-    path.reserve(key.len());
-    for ch in key.chars() {
-        if ch == '~' {
-            *path += "~0";
-        } else if ch == '/' {
-            *path += "~1";
-        } else {
-            path.push(ch);
-        }
     }
 }
 
@@ -191,7 +167,7 @@ mod tests {
             p,
             serde_json::from_value(json!([
                 { "op": "remove", "path": "/0" },
-                { "op": "remove", "path": "/0" },
+                { "op": "remove", "path": "/1" },
             ]))
             .unwrap()
         );
@@ -206,7 +182,7 @@ mod tests {
             p,
             serde_json::from_value(json!([
                 { "op": "remove", "path": "/1" },
-                { "op": "remove", "path": "/1" },
+                { "op": "remove", "path": "/2" },
             ]))
             .unwrap()
         );
@@ -221,7 +197,7 @@ mod tests {
             serde_json::from_value(json!([
                 { "op": "add", "path": "/hello", "value": "bye" },
                 { "op": "remove", "path": "/0" },
-                { "op": "remove", "path": "/0" },
+                { "op": "remove", "path": "/1" },
             ]))
             .unwrap()
         );
