@@ -78,6 +78,7 @@
 //! ```
 #![warn(missing_docs)]
 
+use jsonptr::Pointer;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::{
@@ -146,7 +147,7 @@ impl std::ops::Deref for Patch {
 pub struct AddOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
-    pub path: String,
+    pub path: Pointer,
     /// Value to add to the target location.
     pub value: Value,
 }
@@ -159,7 +160,7 @@ impl_display!(AddOperation);
 pub struct RemoveOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
-    pub path: String,
+    pub path: Pointer,
 }
 
 impl_display!(RemoveOperation);
@@ -170,7 +171,7 @@ impl_display!(RemoveOperation);
 pub struct ReplaceOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
-    pub path: String,
+    pub path: Pointer,
     /// Value to replace with.
     pub value: Value,
 }
@@ -183,10 +184,10 @@ impl_display!(ReplaceOperation);
 pub struct MoveOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// to move value from.
-    pub from: String,
+    pub from: Pointer,
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
-    pub path: String,
+    pub path: Pointer,
 }
 
 impl_display!(MoveOperation);
@@ -197,10 +198,10 @@ impl_display!(MoveOperation);
 pub struct CopyOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// to copy value from.
-    pub from: String,
+    pub from: Pointer,
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
-    pub path: String,
+    pub path: Pointer,
 }
 
 impl_display!(CopyOperation);
@@ -211,7 +212,7 @@ impl_display!(CopyOperation);
 pub struct TestOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
-    pub path: String,
+    pub path: Pointer,
     /// Value to test against.
     pub value: Value,
 }
@@ -240,6 +241,20 @@ pub enum PatchOperation {
 
 impl_display!(PatchOperation);
 
+impl PatchOperation {
+    /// Returns a reference to the path the operation applies to.
+    pub fn path(&self) -> &Pointer {
+        match self {
+            Self::Add(op) => &op.path,
+            Self::Remove(op) => &op.path,
+            Self::Replace(op) => &op.path,
+            Self::Move(op) => &op.path,
+            Self::Copy(op) => &op.path,
+            Self::Test(op) => &op.path,
+        }
+    }
+}
+
 /// This type represents all possible errors that can occur when applying JSON patch
 #[derive(Debug, Error)]
 #[non_exhaustive]
@@ -260,18 +275,18 @@ pub enum PatchErrorKind {
 
 /// This type represents all possible errors that can occur when applying JSON patch
 #[derive(Debug, Error)]
-#[error("Operation '/{operation}' failed at path '{path}': {kind}")]
+#[error("operation '/{operation}' failed at path '{path}': {kind}")]
 #[non_exhaustive]
 pub struct PatchError {
     /// Index of the operation that has failed.
     pub operation: usize,
     /// `path` of the operation.
-    pub path: String,
+    pub path: Pointer,
     /// Kind of the error.
     pub kind: PatchErrorKind,
 }
 
-fn translate_error(kind: PatchErrorKind, operation: usize, path: &str) -> PatchError {
+fn translate_error(kind: PatchErrorKind, operation: usize, path: &Pointer) -> PatchError {
     PatchError {
         operation,
         path: path.to_owned(),
