@@ -79,12 +79,12 @@ pub fn gen_add_remove_patches<R: Rng>(
     patches: usize,
     operations: usize,
 ) -> Vec<Patch> {
-    let leafs = all_leafs(value);
+    let leaves = all_leaves(value);
     let mut vec = Vec::new();
     for _ in 0..patches {
         let mut ops = Vec::new();
         for _ in 0..operations {
-            let path = leafs.choose(rnd).unwrap();
+            let path = leaves.choose(rnd).unwrap();
             ops.push(PatchOperation::Remove(RemoveOperation {
                 path: (*path).clone(),
             }));
@@ -98,25 +98,25 @@ pub fn gen_add_remove_patches<R: Rng>(
     vec
 }
 
-fn all_leafs(value: &Value) -> Vec<Pointer> {
+fn all_leaves(value: &Value) -> Vec<Pointer> {
     let mut result = Vec::new();
-    collect_leafs(value, &mut Pointer::root(), &mut result);
+    collect_leaves(value, &mut Pointer::root(), &mut result);
     result
 }
 
-fn collect_leafs(value: &Value, prefix: &mut Pointer, result: &mut Vec<Pointer>) {
+fn collect_leaves(value: &Value, prefix: &mut Pointer, result: &mut Vec<Pointer>) {
     match *value {
         Value::Array(ref arr) => {
             for (idx, val) in arr.iter().enumerate() {
                 prefix.push_back(idx.into());
-                collect_leafs(val, prefix, result);
+                collect_leaves(val, prefix, result);
                 prefix.pop_back();
             }
         }
         Value::Object(ref map) => {
             for (key, val) in map.iter() {
                 prefix.push_back(key.into());
-                collect_leafs(val, prefix, result);
+                collect_leaves(val, prefix, result);
                 prefix.pop_back();
             }
         }
