@@ -1,6 +1,8 @@
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
+      - actions-*
   pull_request:
     branches: [ "main" ]
 
@@ -23,6 +25,23 @@ jobs:
 
       - name: Run cargo build
         run: cargo build --verbose
+
+  bench:
+    name: Bench
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+
+      - name: Run cargo bench
+        run: cargo +nightly bench --verbose
 
   test:
     name: Test
