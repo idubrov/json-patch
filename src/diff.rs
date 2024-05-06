@@ -1,71 +1,106 @@
-use serde_json::Value;
+use crate::Patch;
+use serde_json::{Map, Value};
+use std::fmt::Write;
 
-struct PatchDiffer {
-    path: String,
-    patch: super::Patch,
-    shift: usize,
-}
-
-impl PatchDiffer {
-    fn new() -> Self {
-        Self {
-            path: "".to_string(),
-            patch: super::Patch(Vec::new()),
-            shift: 0,
+fn diff_impl(left: &Value, right: &Value, pointer: &mut String, patch: &mut super::Patch) {
+    match (left, right) {
+        (Value::Object(ref left_obj), Value::Object(ref right_obj)) => {
+            diff_object(left_obj, right_obj, pointer, patch);
+        }
+        (Value::Array(ref left_array), Value::Array(ref ref_array)) => {
+            diff_array(left_array, ref_array, pointer, patch);
+        }
+        (_, _) if left == right => {
+            // Nothing to do
+        }
+        (_, _) => {
+            // Values are different, replace the value at the path
+            patch
+                .0
+                .push(super::PatchOperation::Replace(super::ReplaceOperation {
+                    path: pointer.clone(),
+                    value: right.clone(),
+                }));
         }
     }
 }
 
-impl<'a> treediff::Delegate<'a, treediff::value::Key, Value> for PatchDiffer {
-    fn push(&mut self, key: &treediff::value::Key) {
-        use std::fmt::Write;
-        self.path.push('/');
-        match *key {
-            treediff::value::Key::Index(idx) => write!(self.path, "{}", idx - self.shift).unwrap(),
-            treediff::value::Key::String(ref key) => append_path(&mut self.path, key),
+fn diff_array(left: &[Value], right: &[Value], pointer: &mut String, patch: &mut Patch) {
+    let len = left.len().max(right.len());
+    let mut shift = 0usize;
+    let prefix = pointer.len();
+    for idx in 0..len {
+        write!(pointer, "/{}", idx - shift).unwrap();
+        match (left.get(idx), right.get(idx)) {
+            (Some(left), Some(right)) => {
+                // Both array have an element at this index
+                diff_impl(left, right, pointer, patch);
+            }
+            (Some(_left), None) => {
+                // The left array has an element at this index, but not the right
+                shift += 1;
+                patch
+                    .0
+                    .push(super::PatchOperation::Remove(super::RemoveOperation {
+                        path: pointer.clone(),
+                    }));
+            }
+            (None, Some(right)) => {
+                // The right array has an element at this index, but not the left
+                patch
+                    .0
+                    .push(super::PatchOperation::Add(super::AddOperation {
+                        path: pointer.clone(),
+                        value: right.clone(),
+                    }));
+            }
+            (None, None) => {
+                unreachable!()
+            }
         }
+        pointer.truncate(prefix);
     }
+}
 
-    fn pop(&mut self) {
-        let pos = self.path.rfind('/').unwrap_or(0);
-        self.path.truncate(pos);
-        self.shift = 0;
-    }
-
-    fn removed<'b>(&mut self, k: &'b treediff::value::Key, _v: &'a Value) {
-        let len = self.path.len();
-        self.push(k);
-        self.patch
-            .0
-            .push(super::PatchOperation::Remove(super::RemoveOperation {
-                path: self.path.clone(),
-            }));
-        // Shift indices, we are deleting array elements
-        if let treediff::value::Key::Index(_) = k {
-            self.shift += 1;
+fn diff_object(
+    left: &Map<String, Value>,
+    right: &Map<String, Value>,
+    pointer: &mut String,
+    patch: &mut Patch,
+) {
+    // Add or replace keys in the right object
+    let prefix = pointer.len();
+    for (key, right_value) in right {
+        pointer.push('/');
+        append_path(pointer, key);
+        match left.get(key) {
+            Some(left_value) => {
+                diff_impl(left_value, right_value, pointer, patch);
+            }
+            None => {
+                patch
+                    .0
+                    .push(super::PatchOperation::Add(super::AddOperation {
+                        path: pointer.clone(),
+                        value: right_value.clone(),
+                    }));
+            }
         }
-        self.path.truncate(len);
+        pointer.truncate(prefix);
     }
 
-    fn added(&mut self, k: &treediff::value::Key, v: &Value) {
-        let len = self.path.len();
-        self.push(k);
-        self.patch
-            .0
-            .push(super::PatchOperation::Add(super::AddOperation {
-                path: self.path.clone(),
-                value: v.clone(),
-            }));
-        self.path.truncate(len);
-    }
-
-    fn modified(&mut self, _old: &'a Value, new: &'a Value) {
-        self.patch
-            .0
-            .push(super::PatchOperation::Replace(super::ReplaceOperation {
-                path: self.path.clone(),
-                value: new.clone(),
-            }));
+    // Remove keys that are not in the right object
+    for key in left.keys() {
+        if !right.contains_key(key) {
+            pointer.push('/');
+            append_path(pointer, key);
+            patch
+                .0
+                .push(super::PatchOperation::Remove(super::RemoveOperation {
+                    path: pointer.clone(),
+                }));
+            pointer.truncate(prefix);
+        }
     }
 }
 
@@ -115,9 +150,9 @@ fn append_path(path: &mut String, key: &str) {
 ///
 /// let p = diff(&left, &right);
 /// assert_eq!(p, from_value::<Patch>(json!([
+///   { "op": "replace", "path": "/title", "value": "Hello!" },
 ///   { "op": "remove", "path": "/author/familyName" },
 ///   { "op": "remove", "path": "/tags/1" },
-///   { "op": "replace", "path": "/title", "value": "Hello!" },
 ///   { "op": "add", "path": "/phoneNumber", "value": "+01-123-456-7890" },
 /// ])).unwrap());
 ///
@@ -128,9 +163,10 @@ fn append_path(path: &mut String, key: &str) {
 /// # }
 /// ```
 pub fn diff(left: &Value, right: &Value) -> super::Patch {
-    let mut differ = PatchDiffer::new();
-    treediff::diff(left, right, &mut differ);
-    differ.patch
+    let mut patch = super::Patch(Vec::new());
+    let mut path = String::new();
+    diff_impl(left, right, &mut path, &mut patch);
+    patch
 }
 
 #[cfg(test)]
@@ -139,92 +175,120 @@ mod tests {
 
     #[test]
     pub fn replace_all() {
-        let left = json!({"title": "Hello!"});
-        let p = super::diff(&left, &Value::Null);
+        let mut left = json!({"title": "Hello!"});
+        let patch = super::diff(&left, &Value::Null);
         assert_eq!(
-            p,
+            patch,
             serde_json::from_value(json!([
                 { "op": "replace", "path": "", "value": null },
             ]))
             .unwrap()
         );
-        let mut left = json!({"title": "Hello!"});
-        crate::patch(&mut left, &p).unwrap();
+        crate::patch(&mut left, &patch).unwrap();
     }
 
     #[test]
     pub fn diff_empty_key() {
-        let left = json!({"title": "Something", "": "Hello!"});
+        let mut left = json!({"title": "Something", "": "Hello!"});
         let right = json!({"title": "Something", "": "Bye!"});
-        let p = super::diff(&left, &right);
+        let patch = super::diff(&left, &right);
         assert_eq!(
-            p,
+            patch,
             serde_json::from_value(json!([
                 { "op": "replace", "path": "/", "value": "Bye!" },
             ]))
             .unwrap()
         );
-        let mut left_patched = json!({"title": "Something", "": "Hello!"});
-        crate::patch(&mut left_patched, &p).unwrap();
-        assert_eq!(left_patched, right);
+        crate::patch(&mut left, &patch).unwrap();
+        assert_eq!(left, right);
     }
 
     #[test]
     pub fn add_all() {
         let right = json!({"title": "Hello!"});
-        let p = super::diff(&Value::Null, &right);
+        let patch = super::diff(&Value::Null, &right);
         assert_eq!(
-            p,
+            patch,
             serde_json::from_value(json!([
                 { "op": "replace", "path": "", "value": { "title": "Hello!" } },
             ]))
             .unwrap()
         );
+
+        let mut left = Value::Null;
+        crate::patch(&mut left, &patch).unwrap();
+        assert_eq!(left, right);
     }
 
     #[test]
     pub fn remove_all() {
-        let left = json!(["hello", "bye"]);
+        let mut left = json!(["hello", "bye"]);
         let right = json!([]);
-        let p = super::diff(&left, &right);
+        let patch = super::diff(&left, &right);
         assert_eq!(
-            p,
+            patch,
             serde_json::from_value(json!([
                 { "op": "remove", "path": "/0" },
                 { "op": "remove", "path": "/0" },
             ]))
             .unwrap()
         );
+
+        crate::patch(&mut left, &patch).unwrap();
+        assert_eq!(left, right);
     }
 
     #[test]
     pub fn remove_tail() {
-        let left = json!(["hello", "bye", "hi"]);
+        let mut left = json!(["hello", "bye", "hi"]);
         let right = json!(["hello"]);
-        let p = super::diff(&left, &right);
+        let patch = super::diff(&left, &right);
         assert_eq!(
-            p,
+            patch,
             serde_json::from_value(json!([
                 { "op": "remove", "path": "/1" },
                 { "op": "remove", "path": "/1" },
             ]))
             .unwrap()
         );
+
+        crate::patch(&mut left, &patch).unwrap();
+        assert_eq!(left, right);
     }
+
+    #[test]
+    pub fn add_tail() {
+        let mut left = json!(["hello"]);
+        let right = json!(["hello", "bye", "hi"]);
+        let patch = super::diff(&left, &right);
+        assert_eq!(
+            patch,
+            serde_json::from_value(json!([
+                { "op": "add", "path": "/1", "value": "bye" },
+                { "op": "add", "path": "/2", "value": "hi" }
+            ]))
+            .unwrap()
+        );
+
+        crate::patch(&mut left, &patch).unwrap();
+        assert_eq!(left, right);
+    }
+
     #[test]
     pub fn replace_object() {
-        let left = json!(["hello", "bye"]);
+        let mut left = json!(["hello", "bye"]);
         let right = json!({"hello": "bye"});
-        let p = super::diff(&left, &right);
+        let patch = super::diff(&left, &right);
         assert_eq!(
-            p,
+            patch,
             serde_json::from_value(json!([
-                { "op": "add", "path": "/hello", "value": "bye" },
-                { "op": "remove", "path": "/0" },
-                { "op": "remove", "path": "/0" },
+                { "op": "replace", "path": "", "value": {"hello": "bye"} }
             ]))
             .unwrap()
         );
+
+        crate::patch(&mut left, &patch).unwrap();
+        assert_eq!(left, right);
     }
 
     #[test]
@@ -236,6 +300,74 @@ mod tests {
             "/slashed/path/with/~": 2,
         });
         let patch = super::diff(&left, &right);
+
+        crate::patch(&mut left, &patch).unwrap();
+        assert_eq!(left, right);
+    }
+
+    #[test]
+    pub fn replace_object_array() {
+        let mut left = json!({ "style": { "ref": {"name": "name"} } });
+        let right = json!({ "style": [{ "ref": {"hello": "hello"} }]});
+        let patch = crate::diff(&left, &right);
+
+        assert_eq!(
+            patch,
+            serde_json::from_value(json!([
+                { "op": "replace", "path": "/style", "value": [{ "ref": {"hello": "hello"} }] },
+            ]))
+            .unwrap()
+        );
+        crate::patch(&mut left, &patch).unwrap();
+        assert_eq!(left, right);
+    }
+
+    #[test]
+    pub fn replace_array_object() {
+        let mut left = json!({ "style": [{ "ref": {"hello": "hello"} }]});
+        let right = json!({ "style": { "ref": {"name": "name"} } });
+        let patch = crate::diff(&left, &right);
+
+        assert_eq!(
+            patch,
+            serde_json::from_value(json!([
+                { "op": "replace", "path": "/style", "value": { "ref": {"name": "name"} } },
+            ]))
+            .unwrap()
+        );
+        crate::patch(&mut left, &patch).unwrap();
+        assert_eq!(left, right);
+    }
+
+    #[test]
+    pub fn remove_keys() {
+        let mut left = json!({"first": 1, "second": 2, "third": 3});
+        let right = json!({"first": 1, "second": 2});
+        let patch = super::diff(&left, &right);
+        assert_eq!(
+            patch,
+            serde_json::from_value(json!([
+                { "op": "remove", "path": "/third" }
+            ]))
+            .unwrap()
+        );
+
+        crate::patch(&mut left, &patch).unwrap();
+        assert_eq!(left, right);
+    }
+
+    #[test]
+    pub fn add_keys() {
+        let mut left = json!({"first": 1, "second": 2});
+        let right = json!({"first": 1, "second": 2, "third": 3});
+        let patch = super::diff(&left, &right);
+        assert_eq!(
+            patch,
+            serde_json::from_value(json!([
+                { "op": "add", "path": "/third", "value": 3 }
+            ]))
+            .unwrap()
+        );
 
         crate::patch(&mut left, &patch).unwrap();
         assert_eq!(left, right);
