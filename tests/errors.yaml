@@ -89,19 +89,19 @@
     - op: add
       path: "first"
       value: true
-  error: "json pointer \"first\" is malformed due to missing starting slash"
+  error: "json pointer is malformed as it does not start with a backslash ('/')"
 - doc: *1
   patch:
     - op: replace
       path: "first"
       value: true
-  error: "json pointer \"first\" is malformed due to missing starting slash"
+  error: "json pointer is malformed as it does not start with a backslash ('/')"
 - doc: *1
   patch:
     - op: remove
       path: "first"
       value: true
-  error: "json pointer \"first\" is malformed due to missing starting slash"
+  error: "json pointer is malformed as it does not start with a backslash ('/')"
 - doc: *1
   patch:
     - op: add

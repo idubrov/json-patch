@@ -1,5 +1,5 @@
 use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation};
-use jsonptr::Pointer;
+use jsonptr::PointerBuf;
 use rand::distributions::Alphanumeric;
 use rand::prelude::*;
 use serde_json::{Map, Value};
@@ -98,24 +98,24 @@ pub fn gen_add_remove_patches<R: Rng>(
     vec
 }
 
-fn all_leaves(value: &Value) -> Vec<Pointer> {
+fn all_leaves(value: &Value) -> Vec<PointerBuf> {
     let mut result = Vec::new();
-    collect_leaves(value, &mut Pointer::root(), &mut result);
+    collect_leaves(value, &mut PointerBuf::new(), &mut result);
     result
 }
 
-fn collect_leaves(value: &Value, prefix: &mut Pointer, result: &mut Vec<Pointer>) {
+fn collect_leaves(value: &Value, prefix: &mut PointerBuf, result: &mut Vec<PointerBuf>) {
     match *value {
         Value::Array(ref arr) => {
             for (idx, val) in arr.iter().enumerate() {
-                prefix.push_back(idx.into());
+                prefix.push_back(idx);
                 collect_leaves(val, prefix, result);
                 prefix.pop_back();
             }
         }
         Value::Object(ref map) => {
             for (key, val) in map.iter() {
-                prefix.push_back(key.into());
+                prefix.push_back(key);
                 collect_leaves(val, prefix, result);
                 prefix.pop_back();
             }

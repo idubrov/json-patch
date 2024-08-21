@@ -1,8 +1,8 @@
 use crate::Patch;
-use jsonptr::Pointer;
+use jsonptr::PointerBuf;
 use serde_json::{Map, Value};
 
-fn diff_impl(left: &Value, right: &Value, pointer: &mut Pointer, patch: &mut super::Patch) {
+fn diff_impl(left: &Value, right: &Value, pointer: &mut PointerBuf, patch: &mut super::Patch) {
     match (left, right) {
         (Value::Object(ref left_obj), Value::Object(ref right_obj)) => {
             diff_object(left_obj, right_obj, pointer, patch);
@@ -25,11 +25,11 @@ fn diff_impl(left: &Value, right: &Value, pointer: &mut Pointer, patch: &mut sup
     }
 }
 
-fn diff_array(left: &[Value], right: &[Value], pointer: &mut Pointer, patch: &mut Patch) {
+fn diff_array(left: &[Value], right: &[Value], pointer: &mut PointerBuf, patch: &mut Patch) {
     let len = left.len().max(right.len());
     let mut shift = 0usize;
     for idx in 0..len {
-        pointer.push_back((idx - shift).into());
+        pointer.push_back(idx - shift);
         match (left.get(idx), right.get(idx)) {
             (Some(left), Some(right)) => {
                 // Both array have an element at this index
@@ -64,12 +64,12 @@ fn diff_array(left: &[Value], right: &[Value], pointer: &mut Pointer, patch: &mu
 fn diff_object(
     left: &Map<String, Value>,
     right: &Map<String, Value>,
-    pointer: &mut Pointer,
+    pointer: &mut PointerBuf,
     patch: &mut Patch,
 ) {
     // Add or replace keys in the right object
     for (key, right_value) in right {
-        pointer.push_back(key.into());
+        pointer.push_back(key);
         match left.get(key) {
             Some(left_value) => {
                 diff_impl(left_value, right_value, pointer, patch);
@@ -89,7 +89,7 @@ fn diff_object(
     // Remove keys that are not in the right object
     for key in left.keys() {
         if !right.contains_key(key) {
-            pointer.push_back(key.into());
+            pointer.push_back(key);
             patch
                 .0
                 .push(super::PatchOperation::Remove(super::RemoveOperation {
@@ -147,7 +147,7 @@ fn diff_object(
 /// ```
 pub fn diff(left: &Value, right: &Value) -> super::Patch {
     let mut patch = super::Patch::default();
-    let mut path = Pointer::root();
+    let mut path = PointerBuf::new();
     diff_impl(left, right, &mut path, &mut patch);
     patch
 }

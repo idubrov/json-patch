@@ -78,7 +78,7 @@
 //! ```
 #![warn(missing_docs)]
 
-use jsonptr::Pointer;
+use jsonptr::{Pointer, PointerBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::{
@@ -148,7 +148,7 @@ pub struct AddOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
     #[cfg_attr(feature = "utoipa", schema(value_type = String))]
-    pub path: Pointer,
+    pub path: PointerBuf,
     /// Value to add to the target location.
     pub value: Value,
 }
@@ -162,7 +162,7 @@ pub struct RemoveOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
     #[cfg_attr(feature = "utoipa", schema(value_type = String))]
-    pub path: Pointer,
+    pub path: PointerBuf,
 }
 
 impl_display!(RemoveOperation);
@@ -174,7 +174,7 @@ pub struct ReplaceOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
     #[cfg_attr(feature = "utoipa", schema(value_type = String))]
-    pub path: Pointer,
+    pub path: PointerBuf,
     /// Value to replace with.
     pub value: Value,
 }
@@ -188,11 +188,11 @@ pub struct MoveOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// to move value from.
     #[cfg_attr(feature = "utoipa", schema(value_type = String))]
-    pub from: Pointer,
+    pub from: PointerBuf,
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
     #[cfg_attr(feature = "utoipa", schema(value_type = String))]
-    pub path: Pointer,
+    pub path: PointerBuf,
 }
 
 impl_display!(MoveOperation);
@@ -204,11 +204,11 @@ pub struct CopyOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// to copy value from.
     #[cfg_attr(feature = "utoipa", schema(value_type = String))]
-    pub from: Pointer,
+    pub from: PointerBuf,
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
     #[cfg_attr(feature = "utoipa", schema(value_type = String))]
-    pub path: Pointer,
+    pub path: PointerBuf,
 }
 
 impl_display!(CopyOperation);
@@ -220,7 +220,7 @@ pub struct TestOperation {
     /// JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location
     /// within the target document where the operation is performed.
     #[cfg_attr(feature = "utoipa", schema(value_type = String))]
-    pub path: Pointer,
+    pub path: PointerBuf,
     /// Value to test against.
     pub value: Value,
 }
@@ -295,7 +295,7 @@ pub struct PatchError {
     /// Index of the operation that has failed.
     pub operation: usize,
     /// `path` of the operation.
-    pub path: Pointer,
+    pub path: PointerBuf,
     /// Kind of the error.
     pub kind: PatchErrorKind,
 }
@@ -503,22 +503,23 @@ fn undo_patches(doc: &mut Value, undo_patches: &[PatchOperation]) -> Result<(), 
     for (operation, patch) in undo_patches.iter().enumerate().rev() {
         match patch {
             PatchOperation::Add(op) => {
-                add(doc, &op.path, op.value.clone())
+                add(doc, op.path.as_str(), op.value.clone())
                     .map_err(|e| translate_error(e, operation, &op.path))?;
             }
             PatchOperation::Remove(op) => {
-                remove(doc, &op.path, true).map_err(|e| translate_error(e, operation, &op.path))?;
+                remove(doc, op.path.as_str(), true)
+                    .map_err(|e| translate_error(e, operation, &op.path))?;
             }
             PatchOperation::Replace(op) => {
-                replace(doc, &op.path, op.value.clone())
+                replace(doc, op.path.as_str(), op.value.clone())
                     .map_err(|e| translate_error(e, operation, &op.path))?;
             }
             PatchOperation::Move(op) => {
-                mov(doc, op.from.as_str(), &op.path, true)
+                mov(doc, op.from.as_str(), op.path.as_str(), true)
                     .map_err(|e| translate_error(e, operation, &op.path))?;
             }
             PatchOperation::Copy(op) => {
-                copy(doc, op.from.as_str(), &op.path)
+                copy(doc, op.from.as_str(), op.path.as_str())
                     .map_err(|e| translate_error(e, operation, &op.path))?;
             }
             _ => unreachable!(),
@@ -539,7 +540,7 @@ fn apply_patches(
     for (operation, patch) in patches.iter().enumerate() {
         match patch {
             PatchOperation::Add(ref op) => {
-                let prev = add(doc, &op.path, op.value.clone())
+                let prev = add(doc, op.path.as_str(), op.value.clone())
                     .map_err(|e| translate_error(e, operation, &op.path))?;
                 if let Some(&mut ref mut undo_stack) = undo_stack {
                     undo_stack.push(match prev {
@@ -554,7 +555,7 @@ fn apply_patches(
                 }
             }
             PatchOperation::Remove(ref op) => {
-                let prev = remove(doc, &op.path, false)
+                let prev = remove(doc, op.path.as_str(), false)
                     .map_err(|e| translate_error(e, operation, &op.path))?;
                 if let Some(&mut ref mut undo_stack) = undo_stack {
                     undo_stack.push(PatchOperation::Add(AddOperation {
@@ -564,7 +565,7 @@ fn apply_patches(
                 }
             }
             PatchOperation::Replace(ref op) => {
-                let prev = replace(doc, &op.path, op.value.clone())
+                let prev = replace(doc, op.path.as_str(), op.value.clone())
                     .map_err(|e| translate_error(e, operation, &op.path))?;
                 if let Some(&mut ref mut undo_stack) = undo_stack {
                     undo_stack.push(PatchOperation::Replace(ReplaceOperation {
@@ -574,7 +575,7 @@ fn apply_patches(
                 }
             }
             PatchOperation::Move(ref op) => {
-                let prev = mov(doc, op.from.as_str(), &op.path, false)
+                let prev = mov(doc, op.from.as_str(), op.path.as_str(), false)
                     .map_err(|e| translate_error(e, operation, &op.path))?;
                 if let Some(&mut ref mut undo_stack) = undo_stack {
                     if let Some(prev) = prev {
@@ -590,7 +591,7 @@ fn apply_patches(
                 }
             }
             PatchOperation::Copy(ref op) => {
-                let prev = copy(doc, op.from.as_str(), &op.path)
+                let prev = copy(doc, op.from.as_str(), op.path.as_str())
                     .map_err(|e| translate_error(e, operation, &op.path))?;
                 if let Some(&mut ref mut undo_stack) = undo_stack {
                     undo_stack.push(match prev {
@@ -605,7 +606,7 @@ fn apply_patches(
                 }
             }
             PatchOperation::Test(ref op) => {
-                test(doc, &op.path, &op.value)
+                test(doc, op.path.as_str(), &op.value)
                     .map_err(|e| translate_error(e, operation, &op.path))?;
             }
         }
