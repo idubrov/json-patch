@@ -2,7 +2,6 @@ use json_patch::{
     AddOperation, CopyOperation, MoveOperation, Patch, PatchOperation, RemoveOperation,
     ReplaceOperation, TestOperation,
 };
-use jsonptr::Pointer;
 use serde_json::{from_str, from_value, json, Value};
 
 #[test]
@@ -14,11 +13,11 @@ fn parse_from_value() {
         patch,
         Patch(vec![
             PatchOperation::Add(AddOperation {
-                path: Pointer::new(["a", "b"]),
+                path: "/a/b".parse().unwrap(),
                 value: Value::from(1),
             }),
             PatchOperation::Remove(RemoveOperation {
-                path: Pointer::new(["c"]),
+                path: "/c".parse().unwrap(),
             }),
         ])
     );
@@ -38,11 +37,11 @@ fn parse_from_string() {
         patch,
         Patch(vec![
             PatchOperation::Add(AddOperation {
-                path: Pointer::new(["a", "b"]),
+                path: "/a/b".parse().unwrap(),
                 value: Value::from(1),
             }),
             PatchOperation::Remove(RemoveOperation {
-                path: Pointer::new(["c"]),
+                path: "/c".parse().unwrap(),
             }),
         ])
     );
@@ -60,7 +59,7 @@ fn serialize_patch() {
 #[test]
 fn display_add_operation() {
     let op = PatchOperation::Add(AddOperation {
-        path: Pointer::new(["a", "b", "c"]),
+        path: "/a/b/c".parse().unwrap(),
         value: json!(["hello", "bye"]),
     });
     assert_eq!(
@@ -83,7 +82,7 @@ fn display_add_operation() {
 #[test]
 fn display_remove_operation() {
     let op = PatchOperation::Remove(RemoveOperation {
-        path: Pointer::new(["a", "b", "c"]),
+        path: "/a/b/c".parse().unwrap(),
     });
     assert_eq!(op.to_string(), r#"{"op":"remove","path":"/a/b/c"}"#);
     assert_eq!(
@@ -98,7 +97,7 @@ fn display_remove_operation() {
 #[test]
 fn display_replace_operation() {
     let op = PatchOperation::Replace(ReplaceOperation {
-        path: Pointer::new(["a", "b", "c"]),
+        path: "/a/b/c".parse().unwrap(),
         value: json!(42),
     });
     assert_eq!(
@@ -118,8 +117,8 @@ fn display_replace_operation() {
 #[test]
 fn display_move_operation() {
     let op = PatchOperation::Move(MoveOperation {
-        from: Pointer::new(["a", "b", "c"]),
-        path: Pointer::new(["a", "b", "d"]),
+        from: "/a/b/c".parse().unwrap(),
+        path: "/a/b/d".parse().unwrap(),
     });
     assert_eq!(
         op.to_string(),
@@ -138,8 +137,8 @@ fn display_move_operation() {
 #[test]
 fn display_copy_operation() {
     let op = PatchOperation::Copy(CopyOperation {
-        from: Pointer::new(["a", "b", "d"]),
-        path: Pointer::new(["a", "b", "e"]),
+        from: "/a/b/d".parse().unwrap(),
+        path: "/a/b/e".parse().unwrap(),
     });
     assert_eq!(
         op.to_string(),
@@ -158,7 +157,7 @@ fn display_copy_operation() {
 #[test]
 fn display_test_operation() {
     let op = PatchOperation::Test(TestOperation {
-        path: Pointer::new(["a", "b", "c"]),
+        path: "/a/b/c".parse().unwrap(),
         value: json!("hello"),
     });
     assert_eq!(
@@ -179,11 +178,11 @@ fn display_test_operation() {
 fn display_patch() {
     let patch = Patch(vec![
         PatchOperation::Add(AddOperation {
-            path: Pointer::new(["a", "b", "c"]),
+            path: "/a/b/c".parse().unwrap(),
             value: json!(["hello", "bye"]),
         }),
         PatchOperation::Remove(RemoveOperation {
-            path: Pointer::new(["a", "b", "c"]),
+            path: "/a/b/c".parse().unwrap(),
         }),
     ]);
 
