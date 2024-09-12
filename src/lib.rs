@@ -658,6 +658,10 @@ fn apply_patches(
 /// # }
 /// ```
 pub fn merge(doc: &mut Value, patch: &Value) {
+    // if patch.is_array() {
+    //     *doc = patch.clone();
+    //     return;
+    // }
     if !patch.is_object() {
         *doc = patch.clone();
         return;
@@ -668,6 +672,15 @@ pub fn merge(doc: &mut Value, patch: &Value) {
     }
     let map = doc.as_object_mut().unwrap();
     for (key, value) in patch.as_object().unwrap() {
+        if key == "imps" {
+            for imp in map.entry(key.as_str()).or_insert(Value::Array(Vec::new())).as_array_mut().unwrap() {
+                println!("----------- imp: {:?}", imp);
+                merge(imp, value);
+                println!("----------- imp: {:?}", imp);
+            }
+            continue;
+        }
+
         if value.is_null() {
             map.remove(key.as_str());
         } else {

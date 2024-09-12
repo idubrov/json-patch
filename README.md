@@ -56,34 +56,60 @@ use json_patch::merge;
 use serde_json::json;
 
 let mut doc = json!({
-  "title": "Goodbye!",
-  "author" : {
-    "givenName" : "John",
-    "familyName" : "Doe"
-  },
-  "tags":[ "example", "sample" ],
-  "content": "This will be unchanged"
-});
+      "title": "Goodbye!",
+
+      "imps": [
+        {
+          "id": "1",
+          "c": {
+            "d": "e",
+            "f": "g"
+          }
+        },
+        {
+          "id": "2",
+          "c": {
+            "d": "e",
+            "f": "g"
+          }
+        }
+      ]
+    });
 
 let patch = json!({
-  "title": "Hello!",
-  "phoneNumber": "+01-123-456-7890",
-  "author": {
-    "familyName": null
-  },
-  "tags": [ "example" ]
-});
+      "imps": {
+        "add": "added new key",
+        "c": {
+          "d": null,
+          "e": "added",
+          "f": "modified"
+        }
+      }
+    });
 
 merge(&mut doc, &patch);
 assert_eq!(doc, json!({
-  "title": "Hello!",
-  "author" : {
-    "givenName" : "John"
-  },
-  "tags": [ "example" ],
-  "content": "This will be unchanged",
-  "phoneNumber": "+01-123-456-7890"
-}));
+      "title": "Goodbye!",
+
+      "imps": [
+        {
+          "id": "1",
+          "add": "added new key",
+          "c": {
+            "e": "added",
+            "f": "modified"
+          }
+        },
+        {
+          "id": "2",
+          "add": "added new key",
+          "c": {
+            "e": "added",
+            "f": "modified"
+          }
+        }
+      ]
+    }));
 ```
 
 ## License
