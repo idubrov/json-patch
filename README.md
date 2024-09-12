@@ -1,9 +1,13 @@
+# json-patch for ktmrtb
+
+is a modefied version of [json-patch](https://github.com/idubrov/json-patch) with extra features for ktmrtb.
+
 [![crates.io](https://img.shields.io/crates/v/json-patch.svg)](https://crates.io/crates/json-patch)
 [![crates.io](https://img.shields.io/crates/d/json-patch.svg)](https://crates.io/crates/json-patch)
 [![Build](https://github.com/idubrov/json-patch/actions/workflows/main.yml/badge.svg)](https://github.com/idubrov/json-patch/actions)
 [![Codecov](https://codecov.io/gh/idubrov/json-patch/branch/main/graph/badge.svg?token=hdcr6yfBfa)](https://codecov.io/gh/idubrov/json-patch)
 
-# json-patch
+## json-patch
 
 A [JSON Patch (RFC 6902)](https://tools.ietf.org/html/rfc6902) and
 [JSON Merge Patch (RFC 7396)](https://tools.ietf.org/html/rfc7396) implementation for Rust.
@@ -11,12 +15,14 @@ A [JSON Patch (RFC 6902)](https://tools.ietf.org/html/rfc6902) and
 ## Usage
 
 Add this to your *Cargo.toml*:
+
 ```toml
 [dependencies]
 json-patch = "*"
 ```
 
 ## Examples
+
 Create and patch document using JSON Patch:
 
 ```rust
@@ -84,8 +90,8 @@ assert_eq!(doc, json!({
 
 Licensed under either of
 
- * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+* Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+* MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 at your option.
 
