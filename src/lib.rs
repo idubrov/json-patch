@@ -672,7 +672,7 @@ pub fn merge(doc: &mut Value, patch: &Value) {
     }
     let map = doc.as_object_mut().unwrap();
     for (key, value) in patch.as_object().unwrap() {
-        if key == "imps" {
+        if key == "imp" {
             for imp in map.entry(key.as_str()).or_insert(Value::Array(Vec::new())).as_array_mut().unwrap() {
                 println!("----------- imp: {:?}", imp);
                 merge(imp, value);
