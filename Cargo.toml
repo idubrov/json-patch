@@ -1,11 +1,12 @@
 [package]
 name = "json-patch"
 version = "3.0.0"
-authors = ["vovacooper <vovacooper@gmail.com>"]
+authors = ["Ivan Dubrov <dubrov.ivan@gmail.com>"]
 categories = []
 keywords = ["json", "json-patch"]
-description = "RFC 6902, JavaScript Object Notation (JSON) Patch with some modifications"
-repository = "https://github.com/KONTRUSTMEDIA/json-patch"
+description = "RFC 6902, JavaScript Object Notation (JSON) Patch"
+repository = "https://github.com/idubrov/json-patch"
+license = "MIT/Apache-2.0"
 readme = "README.md"
 edition = "2021"
 
@@ -14,15 +15,15 @@ default = ["diff"]
 diff = []
 
 [dependencies]
-jsonptr = "*"
+jsonptr = "0.4.7"
 serde = { version = "1.0.159", features = ["derive"] }
-serde_json = "*"
-thiserror = "*"
+serde_json = "1.0.95"
+thiserror = "1.0.40"
 utoipa = { version = "4.0", optional = true }
 
 [dev-dependencies]
-expectorate = "*"
-rand = "*"
+expectorate = "1.0"
+rand = "0.8.5"
 serde_json = { version = "1.0.95", features = ["preserve_order"] }
-serde_yaml = "*"
+serde_yaml = "0.9.19"
 utoipa = { version = "4.0", features = ["debug"] }
