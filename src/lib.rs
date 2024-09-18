@@ -54,6 +54,7 @@
 //!   "tags":[ "example", "sample" ],
 //!   "content": "This will be unchanged"
 //! });
+//! let original_doc = doc.clone();
 //!
 //! let patch = json!({
 //!   "title": "Hello!",
@@ -64,7 +65,7 @@
 //!   "tags": [ "example" ]
 //! });
 //!
-//! merge(&mut doc, &patch);
+//! merge(&mut doc, &patch, &original_doc);
 //! assert_eq!(doc, json!({
 //!   "title": "Hello!",
 //!   "author" : {
@@ -635,6 +636,7 @@ fn apply_patches(
 ///   "tags":[ "example", "sample" ],
 ///   "content": "This will be unchanged"
 /// });
+/// let original_doc = doc.clone();
 ///
 /// let patch = json!({
 ///   "title": "Hello!",
@@ -645,7 +647,7 @@ fn apply_patches(
 ///   "tags": [ "example" ]
 /// });
 ///
-/// merge(&mut doc, &patch);
+/// merge(&mut doc, &patch, &original_doc);
 /// assert_eq!(doc, json!({
 ///   "title": "Hello!",
 ///   "author" : {
@@ -657,7 +659,7 @@ fn apply_patches(
 /// }));
 /// # }
 /// ```
-pub fn merge(doc: &mut Value, patch: &Value) {
+pub fn merge(doc: &mut Value, patch: &Value, original_doc: &Value) {
     // if patch.is_array() {
     //     *doc = patch.clone();
     //     return;
@@ -670,21 +672,39 @@ pub fn merge(doc: &mut Value, patch: &Value) {
     if !doc.is_object() {
         *doc = Value::Object(Map::new());
     }
-    let map = doc.as_object_mut().unwrap();
+    // let map = doc.as_object_mut().unwrap();
     for (key, value) in patch.as_object().unwrap() {
+        // in special case where key == imps (modify all imp vector)
         if key == "imps" {
-            for imp in map.entry("imp").or_insert(Value::Array(Vec::new())).as_array_mut().unwrap() {
-                // println!("----------- imp: {:?}", imp);
-                merge(imp, value);
-                // println!("----------- imp: {:?}", imp);
+            let impression_vector = doc.pointer_mut("/imp");
+            match impression_vector{
+                Some(impression_vector) => {
+                    for imp in impression_vector.as_array_mut().unwrap() {
+                        merge(imp, value, original_doc);
+                    }
+                },
+                None => {continue}
+            }
+            continue;
+        }
+        // special case where key starts with __bidrequest
+        if key == "ifa" && value.is_string() && value.as_str().unwrap().starts_with("__bidrequest") {
+            let doc_path = value.as_str().unwrap().strip_prefix("__bidrequest").unwrap();
+            let doc_value = original_doc.pointer(doc_path).cloned();
+            match doc_value{
+                Some(doc_value) => {
+                    *(doc.pointer_mut(&format!("/{}",key)).unwrap()) = doc_value.clone();
+                },
+                None => {continue}
             }
             continue;
         }
 
+        let map = doc.as_object_mut().unwrap();
         if value.is_null() {
             map.remove(key.as_str());
         } else {
-            merge(map.entry(key.as_str()).or_insert(Value::Null), value);
+            merge(map.entry(key.as_str()).or_insert(Value::Null), value, original_doc);
         }
     }
 }

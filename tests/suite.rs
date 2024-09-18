@@ -65,7 +65,7 @@ struct PatchTestCase {
 fn run_patch_test_case(tc: &PatchTestCase, kind: PatchKind) -> Result<Value, String> {
     let mut actual = tc.doc.clone();
     if kind == PatchKind::MergePatch {
-        json_patch::merge(&mut actual, &tc.patch);
+        json_patch::merge(&mut actual, &tc.patch, &tc.doc.clone());
         return Ok(actual);
     }
 

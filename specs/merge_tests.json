@@ -23,7 +23,7 @@
     "merge": true
   },
   {
-    "comment": "3. example",
+    "comment": "2. example",
     "doc": {
       "title": "Goodbye!",
       "author": {
@@ -60,7 +60,7 @@
     "merge": true
   },
   {
-    "comment": "replacing non-object",
+    "comment": "3. replacing non-object",
     "doc": {
       "title": "Goodbye!",
       "author": {
@@ -91,11 +91,11 @@
   }
   ,
   {
-    "comment": "ktmrtb bidrequest",
+    "comment": "4. ktmrtb bidrequest",
     "doc": {
       "title": "Goodbye!",
 
-      "imps": [
+      "imp": [
         {
           "id": "1",
           "c": {
@@ -125,7 +125,76 @@
     "expected": {
       "title": "Goodbye!",
 
-      "imps": [
+      "imp": [
+        {
+          "id": "1",
+          "add": "added new key",
+          "c": {
+            "e": "added",
+            "f": "modified"
+          }
+        },
+        {
+          "id": "2",
+          "add": "added new key",
+          "c": {
+            "e": "added",
+            "f": "modified"
+          }
+        }
+      ]
+    },
+    "merge": true
+  },
+  {
+    "comment": "5. ktmrtb bidrequest",
+    "doc": {
+      "title": "Goodbye!",
+      "user": {
+        "id": "vovacooper"
+      },
+      "device": {
+        "ifa": "ifa"
+      },
+      "imp": [
+        {
+          "id": "1",
+          "c": {
+            "d": "e",
+            "f": "g"
+          }
+        },
+        {
+          "id": "2",
+          "c": {
+            "d": "e",
+            "f": "g"
+          }
+        }
+      ]
+    },
+    "patch": {
+      "device": {
+        "ifa": "__bidrequest/user/id"
+      },
+      "imps": {
+        "add": "added new key",
+        "c": {
+          "d": null,
+          "e": "added",
+          "f": "modified"
+        }
+      }
+    },
+    "expected": {
+      "title": "Goodbye!",
+      "user": {
+        "id": "vovacooper"
+      },
+      "device": {
+        "ifa": "vovacooper"
+      },
+      "imp": [
         {
           "id": "1",
           "add": "added new key",
