@@ -1,6 +1,6 @@
 [package]
 name = "json-patch"
-version = "3.0.0"
+version = "3.0.1"
 authors = ["Ivan Dubrov <dubrov.ivan@gmail.com>"]
 categories = []
 keywords = ["json", "json-patch"]
