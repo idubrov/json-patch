@@ -81,7 +81,7 @@
 
 use jsonptr::Pointer;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
+use serde_json::{json, Map, Value};
 use std::{
     borrow::Cow,
     fmt::{self, Display, Formatter},
@@ -659,7 +659,14 @@ fn apply_patches(
 /// }));
 /// # }
 /// ```
-pub fn merge(doc: &mut Value, patch: &Value, original_doc: &Value) {
+pub fn merge(
+    doc: &mut Value,
+    patch: &Value,
+    original_doc: &Value,
+    seller_id: Option<&str>,
+    seller_domain: Option<&str>,
+    seller_tag_id: Option<&str>,
+) {
     // if patch.is_array() {
     //     *doc = patch.clone();
     //     return;
@@ -669,42 +676,92 @@ pub fn merge(doc: &mut Value, patch: &Value, original_doc: &Value) {
         return;
     }
 
-    if !doc.is_object() {
-        *doc = Value::Object(Map::new());
-    }
     // let map = doc.as_object_mut().unwrap();
     for (key, value) in patch.as_object().unwrap() {
+        let mut value = value.clone();
         // in special case where key == imps (modify all imp vector)
         if key == "imps" {
             let impression_vector = doc.pointer_mut("/imp");
-            match impression_vector{
+            match impression_vector {
                 Some(impression_vector) => {
                     for imp in impression_vector.as_array_mut().unwrap() {
-                        merge(imp, value, original_doc);
+                        merge(
+                            imp,
+                            &value,
+                            original_doc,
+                            seller_id,
+                            seller_domain,
+                            seller_tag_id,
+                        );
                     }
-                },
-                None => {continue}
+                }
+                None => continue,
             }
             continue;
         }
         // special case where key starts with __bidrequest
-        if key == "ifa" && value.is_string() && value.as_str().unwrap().starts_with("__bidrequest") {
-            let doc_path = value.as_str().unwrap().strip_prefix("__bidrequest").unwrap();
+        if value.is_string() && value.as_str().unwrap().starts_with("__bidrequest") {
+            let doc_path = value
+                .as_str()
+                .unwrap()
+                .strip_prefix("__bidrequest")
+                .unwrap();
             let doc_value = original_doc.pointer(doc_path).cloned();
-            match doc_value{
+            match doc_value {
                 Some(doc_value) => {
-                    *(doc.pointer_mut(&format!("/{}",key)).unwrap()) = doc_value.clone();
-                },
-                None => {continue}
+                    *(doc.pointer_mut(&format!("/{}", key)).unwrap()) = doc_value.clone();
+                }
+                None => continue,
             }
             continue;
+        }
+
+        if key == "pchain" && value.is_string() && value.as_str().unwrap().starts_with("generate") {
+            if seller_tag_id.is_none() || seller_id.is_none() {
+                // if fore some reason there is no seller_id or seller_domain, set it to null
+                value = json!(null);
+            } else {
+                value = format!("{}:{}", seller_tag_id.unwrap(), seller_id.unwrap()).into();
+            }
+        }
+        if key == "schain" && value.is_string() && value.as_str().unwrap().starts_with("generate") {
+            if seller_domain.is_none() || seller_id.is_none() {
+                // if fore some reason there is no seller_id or seller_domain, set it to null
+                value = json!(null);
+            } else {
+                let rid = original_doc.pointer("/id").cloned();
+                value = json!({
+                    "ver": "1.0",
+                    "nodes": [
+                        {
+                            "hp": 1,
+                            "asi": seller_domain.unwrap(),
+                            "sid": seller_id.unwrap(),
+                            "rid": rid.unwrap(),
+                        }
+                    ],
+                    "complete": 1
+                });
+            }
+        }
+
+        // IF DOC is not object but patch is -> follow patch!
+        if !doc.is_object() {
+            *doc = Value::Object(Map::new());
         }
 
         let map = doc.as_object_mut().unwrap();
         if value.is_null() {
             map.remove(key.as_str());
         } else {
-            merge(map.entry(key.as_str()).or_insert(Value::Null), value, original_doc);
+            merge(
+                map.entry(key.as_str()).or_insert(Value::Null),
+                &value,
+                original_doc,
+                seller_id,
+                seller_domain,
+                seller_tag_id,
+            );
         }
     }
 }
