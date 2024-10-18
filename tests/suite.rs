@@ -72,12 +72,11 @@ fn run_patch_test_case(tc: &PatchTestCase, kind: PatchKind) -> Result<Value, Str
     // Patch and verify that in case of error document wasn't changed
     let patch: Patch = serde_json::from_value(tc.patch.clone()).map_err(|err| err.to_string())?;
     json_patch::patch(&mut actual, &patch)
-        .map_err(|e| {
+        .inspect_err(|_| {
             assert_eq!(
                 tc.doc, actual,
                 "no changes should be made to the original document"
             );
-            e
         })
         .map_err(|err| err.to_string())?;
     Ok(actual)
