@@ -663,9 +663,9 @@ pub fn merge(
     doc: &mut Value,
     patch: &Value,
     original_doc: &Value,
-    _seller_id: Option<&str>,
-    _seller_domain: Option<&str>,
-    _seller_tag_id: Option<&str>,
+    seller_id: Option<&str>,
+    seller_domain: Option<&str>,
+    seller_tag_id: Option<&str>,
 ) {
     // if patch.is_array() {
     //     *doc = patch.clone();
@@ -718,7 +718,7 @@ pub fn merge(
 
         // if key == "pchain" && value.is_string() && value.as_str().unwrap().starts_with("generate") {
         //     if seller_tag_id.is_none() || seller_id.is_none() {
-        //         // if fore some reason there is no seller_id or seller_domain, set it to null
+        //         // if fore some reason there is no seller_id or _seller_idseller_domain, set it to null
         //         value = json!(null);
         //     } else {
         //         value = format!("{}:{}", seller_tag_id.unwrap(), seller_id.unwrap()).into();
