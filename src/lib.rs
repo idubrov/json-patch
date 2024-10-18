@@ -78,13 +78,10 @@
 //! ```
 #![warn(missing_docs)]
 
-use jsonptr::{Pointer, PointerBuf};
+use jsonptr::{index::Index, Pointer, PointerBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::{
-    borrow::Cow,
-    fmt::{self, Display, Formatter},
-};
+use std::fmt::{self, Display, Formatter};
 use thiserror::Error;
 
 #[cfg(feature = "diff")]
@@ -287,6 +284,18 @@ pub enum PatchErrorKind {
     CannotMoveInsideItself,
 }
 
+impl From<jsonptr::index::ParseIndexError> for PatchErrorKind {
+    fn from(_: jsonptr::index::ParseIndexError) -> Self {
+        Self::InvalidPointer
+    }
+}
+
+impl From<jsonptr::index::OutOfBoundsError> for PatchErrorKind {
+    fn from(_: jsonptr::index::OutOfBoundsError) -> Self {
+        Self::InvalidPointer
+    }
+}
+
 /// This type represents all possible errors that can occur when applying JSON patch
 #[derive(Debug, Error)]
 #[error("operation '/{operation}' failed at path '{path}': {kind}")]
@@ -308,50 +317,20 @@ fn translate_error(kind: PatchErrorKind, operation: usize, path: &Pointer) -> Pa
     }
 }
 
-fn unescape(s: &str) -> Cow<str> {
-    if s.contains('~') {
-        Cow::Owned(s.replace("~1", "/").replace("~0", "~"))
-    } else {
-        Cow::Borrowed(s)
-    }
-}
-
-fn parse_index(str: &str, len: usize) -> Result<usize, PatchErrorKind> {
-    // RFC 6901 prohibits leading zeroes in index
-    if (str.starts_with('0') && str.len() != 1) || str.starts_with('+') {
-        return Err(PatchErrorKind::InvalidPointer);
-    }
-    match str.parse::<usize>() {
-        Ok(index) if index < len => Ok(index),
-        _ => Err(PatchErrorKind::InvalidPointer),
-    }
-}
-
-fn split_pointer(pointer: &str) -> Result<(&str, &str), PatchErrorKind> {
-    pointer
-        .rfind('/')
-        .ok_or(PatchErrorKind::InvalidPointer)
-        .map(|idx| (&pointer[0..idx], &pointer[idx + 1..]))
-}
-
-fn add(doc: &mut Value, path: &str, value: Value) -> Result<Option<Value>, PatchErrorKind> {
-    if path.is_empty() {
+fn add(doc: &mut Value, path: &Pointer, value: Value) -> Result<Option<Value>, PatchErrorKind> {
+    let Some((parent, last)) = path.split_back() else {
+        // empty path, add is replace the value wholesale
         return Ok(Some(std::mem::replace(doc, value)));
-    }
+    };
 
-    let (parent, last_unescaped) = split_pointer(path)?;
-    let parent = doc
-        .pointer_mut(parent)
+    let mut parent = doc
+        .pointer_mut(parent.as_str())
         .ok_or(PatchErrorKind::InvalidPointer)?;
 
-    match *parent {
-        Value::Object(ref mut obj) => Ok(obj.insert(unescape(last_unescaped).into_owned(), value)),
-        Value::Array(ref mut arr) if last_unescaped == "-" => {
-            arr.push(value);
-            Ok(None)
-        }
-        Value::Array(ref mut arr) => {
-            let idx = parse_index(last_unescaped, arr.len() + 1)?;
+    match &mut parent {
+        Value::Object(obj) => Ok(obj.insert(last.decoded().into_owned(), value)),
+        Value::Array(arr) => {
+            let idx = last.to_index()?.for_len_incl(arr.len())?;
             arr.insert(idx, value);
             Ok(None)
         }
@@ -359,41 +338,47 @@ fn add(doc: &mut Value, path: &str, value: Value) -> Result<Option<Value>, Patch
     }
 }
 
-fn remove(doc: &mut Value, path: &str, allow_last: bool) -> Result<Value, PatchErrorKind> {
-    let (parent, last_unescaped) = split_pointer(path)?;
-    let parent = doc
-        .pointer_mut(parent)
+fn remove(doc: &mut Value, path: &Pointer, allow_last: bool) -> Result<Value, PatchErrorKind> {
+    let Some((parent, last)) = path.split_back() else {
+        return Err(PatchErrorKind::InvalidPointer);
+    };
+    let mut parent = doc
+        .pointer_mut(parent.as_str())
         .ok_or(PatchErrorKind::InvalidPointer)?;
 
-    match *parent {
-        Value::Object(ref mut obj) => match obj.remove(unescape(last_unescaped).as_ref()) {
+    match &mut parent {
+        Value::Object(obj) => match obj.remove(last.decoded().as_ref()) {
             None => Err(PatchErrorKind::InvalidPointer),
             Some(val) => Ok(val),
         },
-        Value::Array(ref mut arr) if allow_last && last_unescaped == "-" => Ok(arr.pop().unwrap()),
-        Value::Array(ref mut arr) => {
-            let idx = parse_index(last_unescaped, arr.len())?;
+        // XXX: is this really correct? semantically it seems off, `-` refers to an empty position, not the last element
+        Value::Array(arr) if allow_last && matches!(last.to_index(), Ok(Index::Next)) => {
+            Ok(arr.pop().unwrap())
+        }
+        Value::Array(arr) => {
+            let idx = last.to_index()?.for_len(arr.len())?;
             Ok(arr.remove(idx))
         }
         _ => Err(PatchErrorKind::InvalidPointer),
     }
 }
 
-fn replace(doc: &mut Value, path: &str, value: Value) -> Result<Value, PatchErrorKind> {
+fn replace(doc: &mut Value, path: &Pointer, value: Value) -> Result<Value, PatchErrorKind> {
     let target = doc
-        .pointer_mut(path)
+        .pointer_mut(path.as_str())
         .ok_or(PatchErrorKind::InvalidPointer)?;
     Ok(std::mem::replace(target, value))
 }
 
 fn mov(
     doc: &mut Value,
-    from: &str,
-    path: &str,
+    from: &Pointer,
+    path: &Pointer,
     allow_last: bool,
 ) -> Result<Option<Value>, PatchErrorKind> {
     // Check we are not moving inside own child
-    if path.starts_with(from) && path[from.len()..].starts_with('/') {
+    // XXX: this can probably be improved
+    if path.as_str().starts_with(from.as_str()) && path.as_str()[from.len()..].starts_with('/') {
         return Err(PatchErrorKind::CannotMoveInsideItself);
     }
     let val = remove(doc, from, allow_last).map_err(|err| match err {
@@ -403,9 +388,9 @@ fn mov(
     add(doc, path, val)
 }
 
-fn copy(doc: &mut Value, from: &str, path: &str) -> Result<Option<Value>, PatchErrorKind> {
+fn copy(doc: &mut Value, from: &Pointer, path: &Pointer) -> Result<Option<Value>, PatchErrorKind> {
     let source = doc
-        .pointer(from)
+        .pointer(from.as_str())
         .ok_or(PatchErrorKind::InvalidFromPointer)?
         .clone();
     add(doc, path, source)
@@ -503,23 +488,22 @@ fn undo_patches(doc: &mut Value, undo_patches: &[PatchOperation]) -> Result<(), 
     for (operation, patch) in undo_patches.iter().enumerate().rev() {
         match patch {
             PatchOperation::Add(op) => {
-                add(doc, op.path.as_str(), op.value.clone())
+                add(doc, &op.path, op.value.clone())
                     .map_err(|e| translate_error(e, operation, &op.path))?;
             }
             PatchOperation::Remove(op) => {
-                remove(doc, op.path.as_str(), true)
-                    .map_err(|e| translate_error(e, operation, &op.path))?;
+                remove(doc, &op.path, true).map_err(|e| translate_error(e, operation, &op.path))?;
             }
             PatchOperation::Replace(op) => {
-                replace(doc, op.path.as_str(), op.value.clone())
+                replace(doc, &op.path, op.value.clone())
                     .map_err(|e| translate_error(e, operation, &op.path))?;
             }
             PatchOperation::Move(op) => {
-                mov(doc, op.from.as_str(), op.path.as_str(), true)
+                mov(doc, &op.from, &op.path, true)
                     .map_err(|e| translate_error(e, operation, &op.path))?;
             }
             PatchOperation::Copy(op) => {
-                copy(doc, op.from.as_str(), op.path.as_str())
+                copy(doc, &op.from, &op.path)
                     .map_err(|e| translate_error(e, operation, &op.path))?;
             }
             _ => unreachable!(),
@@ -540,7 +524,7 @@ fn apply_patches(
     for (operation, patch) in patches.iter().enumerate() {
         match patch {
             PatchOperation::Add(ref op) => {
-                let prev = add(doc, op.path.as_str(), op.value.clone())
+                let prev = add(doc, &op.path, op.value.clone())
                     .map_err(|e| translate_error(e, operation, &op.path))?;
                 if let Some(&mut ref mut undo_stack) = undo_stack {
                     undo_stack.push(match prev {
@@ -555,7 +539,7 @@ fn apply_patches(
                 }
             }
             PatchOperation::Remove(ref op) => {
-                let prev = remove(doc, op.path.as_str(), false)
+                let prev = remove(doc, &op.path, false)
                     .map_err(|e| translate_error(e, operation, &op.path))?;
                 if let Some(&mut ref mut undo_stack) = undo_stack {
                     undo_stack.push(PatchOperation::Add(AddOperation {
@@ -565,7 +549,7 @@ fn apply_patches(
                 }
             }
             PatchOperation::Replace(ref op) => {
-                let prev = replace(doc, op.path.as_str(), op.value.clone())
+                let prev = replace(doc, &op.path, op.value.clone())
                     .map_err(|e| translate_error(e, operation, &op.path))?;
                 if let Some(&mut ref mut undo_stack) = undo_stack {
                     undo_stack.push(PatchOperation::Replace(ReplaceOperation {
@@ -575,7 +559,7 @@ fn apply_patches(
                 }
             }
             PatchOperation::Move(ref op) => {
-                let prev = mov(doc, op.from.as_str(), op.path.as_str(), false)
+                let prev = mov(doc, &op.from, &op.path, false)
                     .map_err(|e| translate_error(e, operation, &op.path))?;
                 if let Some(&mut ref mut undo_stack) = undo_stack {
                     if let Some(prev) = prev {
@@ -591,7 +575,7 @@ fn apply_patches(
                 }
             }
             PatchOperation::Copy(ref op) => {
-                let prev = copy(doc, op.from.as_str(), op.path.as_str())
+                let prev = copy(doc, &op.from, &op.path)
                     .map_err(|e| translate_error(e, operation, &op.path))?;
                 if let Some(&mut ref mut undo_stack) = undo_stack {
                     undo_stack.push(match prev {
