@@ -81,7 +81,7 @@
 
 use jsonptr::Pointer;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value};
 use std::{
     borrow::Cow,
     fmt::{self, Display, Formatter},
@@ -659,7 +659,110 @@ fn apply_patches(
 /// }));
 /// # }
 /// ```
-pub fn merge(
+pub fn merge(doc: &mut Value, patch: &Value, original_doc: &Value) {
+    // if patch.is_array() {
+    //     *doc = patch.clone();
+    //     return;
+    // }
+    if !patch.is_object() {
+        *doc = patch.clone();
+        return;
+    }
+
+    if !doc.is_object() {
+        *doc = Value::Object(Map::new());
+    }
+    // let map = doc.as_object_mut().unwrap();
+    for (key, value) in patch.as_object().unwrap() {
+        // in special case where key == imps (modify all imp vector)
+        if key == "imps" {
+            let impression_vector = doc.pointer_mut("/imp");
+            match impression_vector {
+                Some(impression_vector) => {
+                    for imp in impression_vector.as_array_mut().unwrap() {
+                        merge(imp, value, original_doc);
+                    }
+                }
+                None => continue,
+            }
+            continue;
+        }
+        // special case where key starts with __bidrequest
+        if key == "ifa" && value.is_string() && value.as_str().unwrap().starts_with("__bidrequest")
+        {
+            let doc_path = value
+                .as_str()
+                .unwrap()
+                .strip_prefix("__bidrequest")
+                .unwrap();
+            let doc_value = original_doc.pointer(doc_path).cloned();
+            match doc_value {
+                Some(doc_value) => {
+                    *(doc.pointer_mut(&format!("/{}", key)).unwrap()) = doc_value.clone();
+                }
+                None => continue,
+            }
+            continue;
+        }
+
+        let map = doc.as_object_mut().unwrap();
+        if value.is_null() {
+            map.remove(key.as_str());
+        } else {
+            merge(
+                map.entry(key.as_str()).or_insert(Value::Null),
+                value,
+                original_doc,
+            );
+        }
+    }
+}
+
+/// Patch provided JSON document (given as `serde_json::Value`) in place with JSON Merge Patch
+/// (RFC 7396).
+///
+/// # Example
+/// Create and patch document:
+///
+/// ```rust
+/// #[macro_use]
+/// use json_patch::merge;
+/// use serde_json::json;
+///
+/// # pub fn main() {
+/// let mut doc = json!({
+///   "title": "Goodbye!",
+///   "author" : {
+///     "givenName" : "John",
+///     "familyName" : "Doe"
+///   },
+///   "tags":[ "example", "sample" ],
+///   "content": "This will be unchanged"
+/// });
+/// let original_doc = doc.clone();
+///
+/// let patch = json!({
+///   "title": "Hello!",
+///   "phoneNumber": "+01-123-456-7890",
+///   "author": {
+///     "familyName": null
+///   },
+///   "tags": [ "example" ]
+/// });
+///
+/// merge(&mut doc, &patch, &original_doc);
+/// assert_eq!(doc, json!({
+///   "title": "Hello!",
+///   "author" : {
+///     "givenName" : "John"
+///   },
+///   "tags": [ "example" ],
+///   "content": "This will be unchanged",
+///   "phoneNumber": "+01-123-456-7890"
+/// }));
+/// # }
+/// ```
+pub fn merge_rtb(
     doc: &mut Value,
     patch: &Value,
     original_doc: &Value,
@@ -678,14 +781,14 @@ pub fn merge(
 
     // let map = doc.as_object_mut().unwrap();
     for (key, value) in patch.as_object().unwrap() {
-        let mut value = value.clone();
+        let value = value.clone();
         // in special case where key == imps (modify all imp vector)
         if key == "imps" {
             let impression_vector = doc.pointer_mut("/imp");
             match impression_vector {
                 Some(impression_vector) => {
                     for imp in impression_vector.as_array_mut().unwrap() {
-                        merge(
+                        merge_rtb(
                             imp,
                             &value,
                             original_doc,
@@ -754,7 +857,7 @@ pub fn merge(
         if value.is_null() {
             map.remove(key.as_str());
         } else {
-            merge(
+            merge_rtb(
                 map.entry(key.as_str()).or_insert(Value::Null),
                 &value,
                 original_doc,
