@@ -663,9 +663,9 @@ pub fn merge(
     doc: &mut Value,
     patch: &Value,
     original_doc: &Value,
-    seller_id: Option<&str>,
-    seller_domain: Option<&str>,
-    seller_tag_id: Option<&str>,
+    _seller_id: Option<&str>,
+    _seller_domain: Option<&str>,
+    _seller_tag_id: Option<&str>,
 ) {
     // if patch.is_array() {
     //     *doc = patch.clone();
@@ -716,34 +716,34 @@ pub fn merge(
             continue;
         }
 
-        if key == "pchain" && value.is_string() && value.as_str().unwrap().starts_with("generate") {
-            if seller_tag_id.is_none() || seller_id.is_none() {
-                // if fore some reason there is no seller_id or seller_domain, set it to null
-                value = json!(null);
-            } else {
-                value = format!("{}:{}", seller_tag_id.unwrap(), seller_id.unwrap()).into();
-            }
-        }
-        if key == "schain" && value.is_string() && value.as_str().unwrap().starts_with("generate") {
-            if seller_domain.is_none() || seller_id.is_none() {
-                // if fore some reason there is no seller_id or seller_domain, set it to null
-                value = json!(null);
-            } else {
-                let rid = original_doc.pointer("/id").cloned();
-                value = json!({
-                    "ver": "1.0",
-                    "nodes": [
-                        {
-                            "hp": 1,
-                            "asi": seller_domain.unwrap(),
-                            "sid": seller_id.unwrap(),
-                            "rid": rid.unwrap(),
-                        }
-                    ],
-                    "complete": 1
-                });
-            }
-        }
+        // if key == "pchain" && value.is_string() && value.as_str().unwrap().starts_with("generate") {
+        //     if seller_tag_id.is_none() || seller_id.is_none() {
+        //         // if fore some reason there is no seller_id or seller_domain, set it to null
+        //         value = json!(null);
+        //     } else {
+        //         value = format!("{}:{}", seller_tag_id.unwrap(), seller_id.unwrap()).into();
+        //     }
+        // }
+        // if key == "schain" && value.is_string() && value.as_str().unwrap().starts_with("generate") {
+        //     if seller_domain.is_none() || seller_id.is_none() {
+        //         // if fore some reason there is no seller_id or seller_domain, set it to null
+        //         value = json!(null);
+        //     } else {
+        //         let rid = original_doc.pointer("/id").cloned();
+        //         value = json!({
+        //             "ver": "1.0",
+        //             "nodes": [
+        //                 {
+        //                     "hp": 1,
+        //                     "asi": seller_domain.unwrap(),
+        //                     "sid": seller_id.unwrap(),
+        //                     "rid": rid.unwrap(),
+        //                 }
+        //             ],
+        //             "complete": 1
+        //         });
+        //     }
+        // }
 
         // IF DOC is not object but patch is -> follow patch!
         if !doc.is_object() {
