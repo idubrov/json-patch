@@ -81,7 +81,7 @@
 
 use jsonptr::Pointer;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
+use serde_json::{json, Map, Value};
 use std::{
     borrow::Cow,
     fmt::{self, Display, Formatter},
@@ -781,7 +781,7 @@ pub fn merge_rtb(
 
     // let map = doc.as_object_mut().unwrap();
     for (key, value) in patch.as_object().unwrap() {
-        let value = value.clone();
+        let mut value = value.clone();
         // in special case where key == imps (modify all imp vector)
         if key == "imps" {
             let impression_vector = doc.pointer_mut("/imp");
