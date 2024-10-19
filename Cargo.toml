@@ -15,7 +15,8 @@ default = ["diff"]
 diff = []
 
 [dependencies]
-jsonptr = "0.6.0"
+# jsonptr = "0.6.0"
+jsonptr = { git = "https://github.com/asmello/jsonptr", branch = "main" }
 serde = { version = "1.0.159", features = ["derive"] }
 serde_json = "1.0.95"
 thiserror = "1.0.40"
