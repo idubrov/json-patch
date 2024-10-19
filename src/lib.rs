@@ -377,8 +377,7 @@ fn mov(
     allow_last: bool,
 ) -> Result<Option<Value>, PatchErrorKind> {
     // Check we are not moving inside own child
-    // XXX: this can probably be improved
-    if path.as_str().starts_with(from.as_str()) && path.as_str()[from.len()..].starts_with('/') {
+    if path.starts_with(from) && path.len() != from.len() {
         return Err(PatchErrorKind::CannotMoveInsideItself);
     }
     let val = remove(doc, from, allow_last).map_err(|err| match err {
@@ -396,8 +395,10 @@ fn copy(doc: &mut Value, from: &Pointer, path: &Pointer) -> Result<Option<Value>
     add(doc, path, source)
 }
 
-fn test(doc: &Value, path: &str, expected: &Value) -> Result<(), PatchErrorKind> {
-    let target = doc.pointer(path).ok_or(PatchErrorKind::InvalidPointer)?;
+fn test(doc: &Value, path: &Pointer, expected: &Value) -> Result<(), PatchErrorKind> {
+    let target = doc
+        .pointer(path.as_str())
+        .ok_or(PatchErrorKind::InvalidPointer)?;
     if *target == *expected {
         Ok(())
     } else {
@@ -590,7 +591,7 @@ fn apply_patches(
                 }
             }
             PatchOperation::Test(ref op) => {
-                test(doc, op.path.as_str(), &op.value)
+                test(doc, &op.path, &op.value)
                     .map_err(|e| translate_error(e, operation, &op.path))?;
             }
         }
