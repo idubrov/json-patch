@@ -672,40 +672,8 @@ pub fn merge(doc: &mut Value, patch: &Value, original_doc: &Value) {
     if !doc.is_object() {
         *doc = Value::Object(Map::new());
     }
-    // let map = doc.as_object_mut().unwrap();
+    let map = doc.as_object_mut().unwrap();
     for (key, value) in patch.as_object().unwrap() {
-        // in special case where key == imps (modify all imp vector)
-        if key == "imps" {
-            let impression_vector = doc.pointer_mut("/imp");
-            match impression_vector {
-                Some(impression_vector) => {
-                    for imp in impression_vector.as_array_mut().unwrap() {
-                        merge(imp, value, original_doc);
-                    }
-                }
-                None => continue,
-            }
-            continue;
-        }
-        // special case where key starts with __bidrequest
-        if key == "ifa" && value.is_string() && value.as_str().unwrap().starts_with("__bidrequest")
-        {
-            let doc_path = value
-                .as_str()
-                .unwrap()
-                .strip_prefix("__bidrequest")
-                .unwrap();
-            let doc_value = original_doc.pointer(doc_path).cloned();
-            match doc_value {
-                Some(doc_value) => {
-                    *(doc.pointer_mut(&format!("/{}", key)).unwrap()) = doc_value.clone();
-                }
-                None => continue,
-            }
-            continue;
-        }
-
-        let map = doc.as_object_mut().unwrap();
         if value.is_null() {
             map.remove(key.as_str());
         } else {
@@ -778,13 +746,20 @@ pub fn merge_rtb(
         *doc = patch.clone();
         return;
     }
+    if !doc.is_object() {
+        *doc = Value::Object(Map::new());
+    }
 
-    // let map = doc.as_object_mut().unwrap();
+    let map = doc.as_object_mut().unwrap();
     for (key, value) in patch.as_object().unwrap() {
         let mut value = value.clone();
+
         // in special case where key == imps (modify all imp vector)
         if key == "imps" {
-            let impression_vector = doc.pointer_mut("/imp");
+            let impression_vector = map.get_mut("imp");
+
+            println!("impression_vector: {:#?}", impression_vector);
+            // let impression_vector = doc.pointer_mut("/imp");
             match impression_vector {
                 Some(impression_vector) => {
                     for imp in impression_vector.as_array_mut().unwrap() {
@@ -812,13 +787,13 @@ pub fn merge_rtb(
             let doc_value = original_doc.pointer(doc_path).cloned();
             match doc_value {
                 Some(doc_value) => {
-                    *(doc.pointer_mut(&format!("/{}", key)).unwrap()) = doc_value.clone();
+                    // *(doc.pointer_mut(&format!("/{}", key)).unwrap()) = doc_value.clone();
+                    map[key.as_str()] = doc_value.clone();
                 }
                 None => continue,
             }
             continue;
         }
-
         if key == "pchain" && value.is_string() && value.as_str().unwrap().starts_with("generate") {
             if seller_tag_id.is_none() || seller_id.is_none() {
                 // if fore some reason there is no seller_id or _seller_idseller_domain, set it to null
@@ -848,12 +823,61 @@ pub fn merge_rtb(
             }
         }
 
-        // IF DOC is not object but patch is -> follow patch!
-        if !doc.is_object() {
-            *doc = Value::Object(Map::new());
+        // search for a special type object
+        // {
+        //    "_type": "map",
+        //    "key": "__bidrequest/app/bundle/id",
+        //    "map": {
+        //        "best_app1": "1",
+        //        "best_app2": "2",
+        //    }
+        // }
+        // will replace object with map[bidrequest[key]]
+        if value.is_object() && value["_type"] == json!("map") {
+            let map_key = &value["key"];
+            let map_table = &value["map"];
+
+            // println!("map_key: {:#?}", map_key);
+            // println!("map: {:#?}", map_table);
+
+            if map_key.is_string() && map_key.as_str().unwrap().starts_with("__bidrequest") {
+                let doc_path = map_key
+                    .as_str()
+                    .unwrap()
+                    .strip_prefix("__bidrequest")
+                    .unwrap();
+                let mapped_key = original_doc.pointer(doc_path).cloned();
+                // println!("mapped_key: {:#?}", mapped_key);
+                if mapped_key.is_none() {
+                    // did not found the key in the map. return None
+                    // println!("key is not string or does not start with __bidrequest");
+                    map.remove(key.as_str());
+                    continue;
+                }
+                let mapped_key = mapped_key.unwrap();
+                if mapped_key.is_string() {
+                    let new_val = map_table.get(mapped_key.as_str().unwrap());
+                    // println!("new_val: {:#?}", new_val);
+                    // println!("key: {:#?}", key);
+                    // println!("doc: {:#?}", map);
+                    match new_val {
+                        Some(v) => {
+                            // *(doc.pointer_mut(&format!("/{}", key)).unwrap()) = v.clone();
+                            map.insert(key.to_string(), v.clone());
+                        }
+                        None => {
+                            map.remove(key.as_str());
+                            continue;
+                        }
+                    }
+                }
+            } else {
+                println!("key is not string or does not start with __bidrequest");
+            }
+            continue;
         }
 
-        let map = doc.as_object_mut().unwrap();
+        // let map = doc.as_object_mut().unwrap();
         if value.is_null() {
             map.remove(key.as_str());
         } else {

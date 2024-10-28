@@ -28,3 +28,5 @@ rand = "*"
 serde_json = { version = "*", features = ["preserve_order"] }
 serde_yaml = "*"
 utoipa = { version = "*", features = ["debug"] }
+pretty_assertions = "*"
+better-panic = "*"

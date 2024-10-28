@@ -1,4 +1,5 @@
 use json_patch::Patch;
+use pretty_assertions::assert_eq;
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -39,6 +40,15 @@ fn merge_tests() {
     );
 }
 
+#[test]
+fn merge_ktm_tests() {
+    run_specs(
+        "specs/merge_ktm_tests.json",
+        Errors::IgnoreContent,
+        PatchKind::MergePatchKTM,
+    );
+}
+
 #[derive(PartialEq, Eq, Clone, Copy)]
 enum Errors {
     ExactMatch,
@@ -49,6 +59,7 @@ enum Errors {
 enum PatchKind {
     Patch,
     MergePatch,
+    MergePatchKTM,
 }
 
 #[derive(Debug, Deserialize)]
@@ -64,10 +75,21 @@ struct PatchTestCase {
 
 fn run_patch_test_case(tc: &PatchTestCase, kind: PatchKind) -> Result<Value, String> {
     let mut actual = tc.doc.clone();
-    if kind == PatchKind::MergePatch {
-        json_patch::merge(&mut actual, &tc.patch, &tc.doc.clone());
-        return Ok(actual);
+    match kind {
+        PatchKind::MergePatch => {
+            json_patch::merge(&mut actual, &tc.patch, &tc.doc.clone());
+            return Ok(actual);
+        }
+        PatchKind::MergePatchKTM => {
+            json_patch::merge_rtb(&mut actual, &tc.patch, &tc.doc.clone(), None, None, None);
+            return Ok(actual);
+        }
+        _ => (),
     }
+    // if kind == PatchKind::MergePatch {
+    //     json_patch::merge(&mut actual, &tc.patch, &tc.doc.clone());
+    //     return Ok(actual);
+    // }
 
     // Patch and verify that in case of error document wasn't changed
     let patch: Patch = serde_json::from_value(tc.patch.clone()).map_err(|err| err.to_string())?;
