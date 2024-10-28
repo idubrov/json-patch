@@ -758,7 +758,7 @@ pub fn merge_rtb(
         if key == "imps" {
             let impression_vector = map.get_mut("imp");
 
-            println!("impression_vector: {:#?}", impression_vector);
+            // println!("impression_vector: {:#?}", impression_vector);
             // let impression_vector = doc.pointer_mut("/imp");
             match impression_vector {
                 Some(impression_vector) => {
