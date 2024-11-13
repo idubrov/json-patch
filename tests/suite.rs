@@ -142,8 +142,8 @@ fn run_specs(path: &str, errors: Errors, kind: PatchKind) {
                     };
                     assert_eq!(
                         *expected, actual,
-                        "\nActual does not match expected in test case {}: {}",
-                        idx, comment
+                        "\nActual does not match expected in test case {}: {}. {:#?},{:#?}",
+                        idx, comment, *expected, actual
                     );
                 }
             }

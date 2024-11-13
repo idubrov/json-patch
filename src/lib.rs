@@ -828,7 +828,8 @@ pub fn merge_rtb(
         // search for a special type object
         // {
         //    "_type": "map",
-        //    "key": "__bidrequest/app/bundle/id",
+        //    "key": "__bidrequest/app/bundle/id", // will evaluate the __bidrequest/app/bundle/id passed and return map[${__bidrequest.app.bundle.id}]
+        //    "key": "supply_source", // will evaluate the supply_source passed and return map[${supply_source}]
         //    "map": {
         //        "best_app1": "1",
         //        "best_app2": "2",
@@ -849,6 +850,7 @@ pub fn merge_rtb(
             // println!("map_key: {:#?}", map_key);
             // println!("map: {:#?}", map_table);
             if map_key.as_str().unwrap().to_ascii_lowercase() == "supply_partner" {
+                // println!("supply_partner: [{:#?}]", supply_partner);
                 // let supply_partner = match supply_partner {
                 //     Some(sp) => {
                 //         // *(doc.pointer_mut(&format!("/{}", key)).unwrap()) = v.clone();
@@ -864,65 +866,64 @@ pub fn merge_rtb(
                 // println!("key: {:#?}", key);
                 // println!("doc: {:#?}", map);
                 match map_table.get(supply_partner) {
-                    Some(v) => {
+                    Some(sid) => {
                         // *(doc.pointer_mut(&format!("/{}", key)).unwrap()) = v.clone();
-                        map.insert(key.to_string(), v.clone());
+                        // println!("sid: {:#?}", sid);
+                        map.insert(key.to_string(), sid.clone());
                     }
                     None => {
                         map.remove(key.as_str());
-                        continue;
                     }
                 }
+            }
 
-                if map_key.as_str().unwrap().starts_with("__bidrequest") {
-                    let doc_path = map_key
-                        .as_str()
-                        .unwrap()
-                        .strip_prefix("__bidrequest")
-                        .unwrap();
-                    let mapped_key = original_doc.pointer(doc_path).cloned();
-                    // println!("mapped_key: {:#?}", mapped_key);
-                    if mapped_key.is_none() {
-                        // did not found the key in the map. return None
-                        // println!("key is not string or does not start with __bidrequest");
-                        map.remove(key.as_str());
-                        continue;
-                    }
-                    let mapped_key = mapped_key.unwrap();
-                    if mapped_key.is_string() {
-                        let new_val = map_table.get(mapped_key.as_str().unwrap());
-                        // println!("new_val: {:#?}", new_val);
-                        // println!("key: {:#?}", key);
-                        // println!("doc: {:#?}", map);
-                        match new_val {
-                            Some(v) => {
-                                // *(doc.pointer_mut(&format!("/{}", key)).unwrap()) = v.clone();
-                                map.insert(key.to_string(), v.clone());
-                            }
-                            None => {
-                                map.remove(key.as_str());
-                                continue;
-                            }
+            if map_key.as_str().unwrap().starts_with("__bidrequest") {
+                let doc_path = map_key
+                    .as_str()
+                    .unwrap()
+                    .strip_prefix("__bidrequest")
+                    .unwrap();
+                let mapped_key = original_doc.pointer(doc_path).cloned();
+                // println!("mapped_key: {:#?}", mapped_key);
+                if mapped_key.is_none() {
+                    // did not found the key in the map. return None
+                    // println!("key is not string or does not start with __bidrequest");
+                    map.remove(key.as_str());
+                    continue;
+                }
+                let mapped_key = mapped_key.unwrap();
+                if mapped_key.is_string() {
+                    let new_val = map_table.get(mapped_key.as_str().unwrap());
+                    // println!("new_val: {:#?}", new_val);
+                    // println!("key: {:#?}", key);
+                    // println!("doc: {:#?}", map);
+                    match new_val {
+                        Some(v) => {
+                            // *(doc.pointer_mut(&format!("/{}", key)).unwrap()) = v.clone();
+                            map.insert(key.to_string(), v.clone());
+                        }
+                        None => {
+                            map.remove(key.as_str());
                         }
                     }
                 }
-                continue;
             }
+            continue;
+        }
 
-            // let map = doc.as_object_mut().unwrap();
-            if value.is_null() {
-                map.remove(key.as_str());
-            } else {
-                merge_rtb(
-                    map.entry(key.as_str()).or_insert(Value::Null),
-                    &value,
-                    original_doc,
-                    supply_partner,
-                    seller_id,
-                    seller_domain,
-                    seller_tag_id,
-                );
-            }
+        // let map = doc.as_object_mut().unwrap();
+        if value.is_null() {
+            map.remove(key.as_str());
+        } else {
+            merge_rtb(
+                map.entry(key.as_str()).or_insert(Value::Null),
+                &value,
+                original_doc,
+                supply_partner,
+                seller_id,
+                seller_domain,
+                seller_tag_id,
+            );
         }
     }
 }

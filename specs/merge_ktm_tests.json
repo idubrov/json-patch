@@ -600,29 +600,27 @@
     "patch": {
       "user": {
         "sid": {
-          "tagid": {
-            "key": "supply_partner",
-            "map": {
-              "vova": "works",
-              "1214223596": "134177709",
-              "1269540854": "134177716",
-              "1465591510": "134177722",
-              "in.playsimple.wordtrip": "134177610",
-              "in.playsimple.wordbingo": "134177634",
-              "in.crossy.daily_crossword": "134177632"
-            },
-            "_type": "map"
-          }
+          "key": "supply_partner",
+          "map": {
+            "1214223596": "134177709",
+            "vova": "works",
+            "1269540854": "134177716",
+            "1465591510": "134177722",
+            "in.playsimple.wordtrip": "134177610",
+            "in.playsimple.wordbingo": "134177634",
+            "in.crossy.daily_crossword": "134177632"
+          },
+          "_type": "map"
         }
-      },
-      "expected": {
-        "title": "Goodbye!",
-        "user": {
-          "id": "vovacooper",
-          "sid": "works"
-        }
-      },
-      "merge": true
-    }
+      }
+    },
+    "expected": {
+      "title": "Goodbye!",
+      "user": {
+        "id": "vovacooper",
+        "sid": "works"
+      }
+    },
+    "merge": true
   }
 ]
