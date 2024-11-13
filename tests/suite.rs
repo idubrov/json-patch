@@ -81,7 +81,15 @@ fn run_patch_test_case(tc: &PatchTestCase, kind: PatchKind) -> Result<Value, Str
             return Ok(actual);
         }
         PatchKind::MergePatchKTM => {
-            json_patch::merge_rtb(&mut actual, &tc.patch, &tc.doc.clone(), None, None, None);
+            json_patch::merge_rtb(
+                &mut actual,
+                &tc.patch,
+                &tc.doc.clone(),
+                "vova",
+                None,
+                None,
+                None,
+            );
             return Ok(actual);
         }
         _ => (),
