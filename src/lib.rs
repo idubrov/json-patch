@@ -92,7 +92,7 @@ pub use self::diff::diff;
 
 struct WriteAdapter<'a>(&'a mut dyn fmt::Write);
 
-impl<'a> std::io::Write for WriteAdapter<'a> {
+impl std::io::Write for WriteAdapter<'_> {
     fn write(&mut self, buf: &[u8]) -> Result<usize, std::io::Error> {
         let s = std::str::from_utf8(buf).unwrap();
         self.0

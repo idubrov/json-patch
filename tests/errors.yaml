@@ -47,13 +47,13 @@
     - op: copy
       from: "/third/1~1"
       path: "/fourth"
-  error: "operation '/0' failed at path '/fourth': \"from\" path is invalid"
+  error: 'operation ''/0'' failed at path ''/fourth'': "from" path is invalid'
 - doc: *1
   patch:
     - op: move
       from: "/third/1~1"
       path: "/fourth"
-  error: "operation '/0' failed at path '/fourth': \"from\" path is invalid"
+  error: 'operation ''/0'' failed at path ''/fourth'': "from" path is invalid'
 - doc: *1
   patch:
     - op: move
@@ -89,19 +89,19 @@
     - op: add
       path: "first"
       value: true
-  error: "json pointer is malformed as it does not start with a backslash ('/')"
+  error: "json pointer failed to parse; does not start with a slash ('/') and is not empty"
 - doc: *1
   patch:
     - op: replace
       path: "first"
       value: true
-  error: "json pointer is malformed as it does not start with a backslash ('/')"
+  error: "json pointer failed to parse; does not start with a slash ('/') and is not empty"
 - doc: *1
   patch:
     - op: remove
       path: "first"
       value: true
-  error: "json pointer is malformed as it does not start with a backslash ('/')"
+  error: "json pointer failed to parse; does not start with a slash ('/') and is not empty"
 - doc: *1
   patch:
     - op: add
