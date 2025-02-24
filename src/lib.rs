@@ -84,6 +84,10 @@ use serde_json::{Map, Value};
 use std::fmt::{self, Display, Formatter};
 use thiserror::Error;
 
+// So users can instance `jsonptr::PointerBuf` and others without
+// having to explicitly match our `jsonptr` version.
+pub use jsonptr;
+
 #[cfg(feature = "diff")]
 mod diff;
 
