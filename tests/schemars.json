@@ -1,0 +1,149 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PatchOperation",
+  "description": "JSON Patch single patch operation",
+  "oneOf": [
+    {
+      "description": "'add' operation",
+      "type": "object",
+      "required": [
+        "op",
+        "path",
+        "value"
+      ],
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": [
+            "add"
+          ]
+        },
+        "path": {
+          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location within the target document where the operation is performed.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Value to add to the target location."
+        }
+      }
+    },
+    {
+      "description": "'remove' operation",
+      "type": "object",
+      "required": [
+        "op",
+        "path"
+      ],
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": [
+            "remove"
+          ]
+        },
+        "path": {
+          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location within the target document where the operation is performed.",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "description": "'replace' operation",
+      "type": "object",
+      "required": [
+        "op",
+        "path",
+        "value"
+      ],
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": [
+            "replace"
+          ]
+        },
+        "path": {
+          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location within the target document where the operation is performed.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Value to replace with."
+        }
+      }
+    },
+    {
+      "description": "'move' operation",
+      "type": "object",
+      "required": [
+        "from",
+        "op",
+        "path"
+      ],
+      "properties": {
+        "from": {
+          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location to move value from.",
+          "type": "string"
+        },
+        "op": {
+          "type": "string",
+          "enum": [
+            "move"
+          ]
+        },
+        "path": {
+          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location within the target document where the operation is performed.",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "description": "'copy' operation",
+      "type": "object",
+      "required": [
+        "from",
+        "op",
+        "path"
+      ],
+      "properties": {
+        "from": {
+          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location to copy value from.",
+          "type": "string"
+        },
+        "op": {
+          "type": "string",
+          "enum": [
+            "copy"
+          ]
+        },
+        "path": {
+          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location within the target document where the operation is performed.",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "description": "'test' operation",
+      "type": "object",
+      "required": [
+        "op",
+        "path",
+        "value"
+      ],
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": [
+            "test"
+          ]
+        },
+        "path": {
+          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location within the target document where the operation is performed.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Value to test against."
+        }
+      }
+    }
+  ]
+}
