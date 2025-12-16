@@ -9,6 +9,7 @@ repository = "https://github.com/idubrov/json-patch"
 license = "MIT/Apache-2.0"
 readme = "README.md"
 edition = "2021"
+include = ["Cargo.toml", "README.md", "LICENSE-MIT", "LICENSE-APACHE", "src/**/*.rs"]
 
 [features]
 default = ["diff"]
