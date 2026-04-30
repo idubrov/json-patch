@@ -1,149 +1,193 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PatchOperation",
   "description": "JSON Patch single patch operation",
   "oneOf": [
     {
       "description": "'add' operation",
       "type": "object",
-      "required": [
-        "op",
-        "path",
-        "value"
-      ],
       "properties": {
         "op": {
           "type": "string",
-          "enum": [
-            "add"
-          ]
-        },
+          "const": "add"
+        }
+      },
+      "$ref": "#/$defs/AddOperation",
+      "required": [
+        "op"
+      ]
+    },
+    {
+      "description": "'remove' operation",
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "const": "remove"
+        }
+      },
+      "$ref": "#/$defs/RemoveOperation",
+      "required": [
+        "op"
+      ]
+    },
+    {
+      "description": "'replace' operation",
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "const": "replace"
+        }
+      },
+      "$ref": "#/$defs/ReplaceOperation",
+      "required": [
+        "op"
+      ]
+    },
+    {
+      "description": "'move' operation",
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "const": "move"
+        }
+      },
+      "$ref": "#/$defs/MoveOperation",
+      "required": [
+        "op"
+      ]
+    },
+    {
+      "description": "'copy' operation",
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "const": "copy"
+        }
+      },
+      "$ref": "#/$defs/CopyOperation",
+      "required": [
+        "op"
+      ]
+    },
+    {
+      "description": "'test' operation",
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "const": "test"
+        }
+      },
+      "$ref": "#/$defs/TestOperation",
+      "required": [
+        "op"
+      ]
+    }
+  ],
+  "$defs": {
+    "AddOperation": {
+      "description": "JSON Patch 'add' operation representation",
+      "type": "object",
+      "properties": {
         "path": {
-          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location within the target document where the operation is performed.",
+          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location\nwithin the target document where the operation is performed.",
           "type": "string"
         },
         "value": {
           "description": "Value to add to the target location."
         }
-      }
-    },
-    {
-      "description": "'remove' operation",
-      "type": "object",
+      },
       "required": [
-        "op",
-        "path"
-      ],
-      "properties": {
-        "op": {
-          "type": "string",
-          "enum": [
-            "remove"
-          ]
-        },
-        "path": {
-          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location within the target document where the operation is performed.",
-          "type": "string"
-        }
-      }
-    },
-    {
-      "description": "'replace' operation",
-      "type": "object",
-      "required": [
-        "op",
         "path",
         "value"
-      ],
+      ]
+    },
+    "RemoveOperation": {
+      "description": "JSON Patch 'remove' operation representation",
+      "type": "object",
       "properties": {
-        "op": {
-          "type": "string",
-          "enum": [
-            "replace"
-          ]
-        },
         "path": {
-          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location within the target document where the operation is performed.",
+          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location\nwithin the target document where the operation is performed.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ]
+    },
+    "ReplaceOperation": {
+      "description": "JSON Patch 'replace' operation representation",
+      "type": "object",
+      "properties": {
+        "path": {
+          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location\nwithin the target document where the operation is performed.",
           "type": "string"
         },
         "value": {
           "description": "Value to replace with."
         }
-      }
-    },
-    {
-      "description": "'move' operation",
-      "type": "object",
+      },
       "required": [
-        "from",
-        "op",
-        "path"
-      ],
-      "properties": {
-        "from": {
-          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location to move value from.",
-          "type": "string"
-        },
-        "op": {
-          "type": "string",
-          "enum": [
-            "move"
-          ]
-        },
-        "path": {
-          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location within the target document where the operation is performed.",
-          "type": "string"
-        }
-      }
-    },
-    {
-      "description": "'copy' operation",
-      "type": "object",
-      "required": [
-        "from",
-        "op",
-        "path"
-      ],
-      "properties": {
-        "from": {
-          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location to copy value from.",
-          "type": "string"
-        },
-        "op": {
-          "type": "string",
-          "enum": [
-            "copy"
-          ]
-        },
-        "path": {
-          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location within the target document where the operation is performed.",
-          "type": "string"
-        }
-      }
-    },
-    {
-      "description": "'test' operation",
-      "type": "object",
-      "required": [
-        "op",
         "path",
         "value"
-      ],
+      ]
+    },
+    "MoveOperation": {
+      "description": "JSON Patch 'move' operation representation",
+      "type": "object",
       "properties": {
-        "op": {
-          "type": "string",
-          "enum": [
-            "test"
-          ]
+        "from": {
+          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location\nto move value from.",
+          "type": "string"
         },
         "path": {
-          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location within the target document where the operation is performed.",
+          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location\nwithin the target document where the operation is performed.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "path"
+      ]
+    },
+    "CopyOperation": {
+      "description": "JSON Patch 'copy' operation representation",
+      "type": "object",
+      "properties": {
+        "from": {
+          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location\nto copy value from.",
+          "type": "string"
+        },
+        "path": {
+          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location\nwithin the target document where the operation is performed.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "path"
+      ]
+    },
+    "TestOperation": {
+      "description": "JSON Patch 'test' operation representation",
+      "type": "object",
+      "properties": {
+        "path": {
+          "description": "JSON-Pointer value [RFC6901](https://tools.ietf.org/html/rfc6901) that references a location\nwithin the target document where the operation is performed.",
           "type": "string"
         },
         "value": {
           "description": "Value to test against."
         }
-      }
+      },
+      "required": [
+        "path",
+        "value"
+      ]
     }
-  ]
+  }
 }
