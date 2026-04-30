@@ -47,7 +47,7 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     container:
-      image: xd009642/tarpaulin:0.22.0
+      image: xd009642/tarpaulin:0.35.4
       options: --security-opt seccomp=unconfined
     steps:
       - name: Checkout sources
