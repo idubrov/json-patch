@@ -28,5 +28,5 @@ expectorate = "1.0"
 rand = "0.8.5"
 schemars = "1.0.4"
 serde_json = { version = "1.0.95", features = ["preserve_order"] }
-serde_yaml = "0.9.19"
+yaml_serde = "0.10.3"
 utoipa = { version = "5", features = ["debug"] }
