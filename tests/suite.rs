@@ -86,7 +86,7 @@ fn run_specs(path: &str, errors: Errors, kind: PatchKind) {
     let cases = std::fs::read_to_string(path).unwrap();
     let is_yaml = path.ends_with(".yaml") || path.ends_with(".yml");
     let cases: Vec<PatchTestCase> = if is_yaml {
-        serde_yaml::from_str(&cases).unwrap()
+        yaml_serde::from_str(&cases).unwrap()
     } else {
         serde_json::from_str(&cases).unwrap()
     };
