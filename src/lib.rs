@@ -390,17 +390,12 @@ fn replace(doc: &mut Value, path: &Pointer, value: Value) -> Result<Value, Patch
     Ok(std::mem::replace(target, value))
 }
 
-fn mov(
-    doc: &mut Value,
-    from: &Pointer,
-    path: &Pointer,
-    allow_last: bool,
-) -> Result<Option<Value>, PatchErrorKind> {
+fn mov(doc: &mut Value, from: &Pointer, path: &Pointer) -> Result<Option<Value>, PatchErrorKind> {
     // Check we are not moving inside own child
     if path.starts_with(from) && path.len() != from.len() {
         return Err(PatchErrorKind::CannotMoveInsideItself);
     }
-    let val = remove(doc, from, allow_last).map_err(|err| match err {
+    let val = remove(doc, from, false).map_err(|err| match err {
         PatchErrorKind::InvalidPointer => PatchErrorKind::InvalidFromPointer,
         err => err,
     })?;
@@ -520,8 +515,10 @@ fn undo_patches(doc: &mut Value, undo_patches: &[PatchOperation]) -> Result<(), 
                     .map_err(|e| translate_error(e, operation, &op.path))?;
             }
             PatchOperation::Move(op) => {
-                mov(doc, &op.from, &op.path, true)
+                // Undoing a move into an ancestor moves the value back inside itself
+                let val = remove(doc, &op.from, true)
                     .map_err(|e| translate_error(e, operation, &op.path))?;
+                add(doc, &op.path, val).map_err(|e| translate_error(e, operation, &op.path))?;
             }
             PatchOperation::Copy(op) => {
                 copy(doc, &op.from, &op.path)
@@ -580,19 +577,38 @@ fn apply_patches(
                 }
             }
             PatchOperation::Move(ref op) => {
-                let prev = mov(doc, &op.from, &op.path, false)
+                let prev = mov(doc, &op.from, &op.path)
                     .map_err(|e| translate_error(e, operation, &op.path))?;
                 if let Some(&mut ref mut undo_stack) = undo_stack {
-                    if let Some(prev) = prev {
-                        undo_stack.push(PatchOperation::Add(AddOperation {
-                            path: op.path.clone(),
-                            value: prev,
-                        }));
+                    match prev {
+                        // `from` lived inside `prev`, so restore `prev` before re-adding the value
+                        Some(prev) if op.from.starts_with(&op.path) => {
+                            let moved = doc
+                                .pointer(op.path.as_str())
+                                .cloned()
+                                .expect("the moved value is at `path`");
+                            undo_stack.push(PatchOperation::Add(AddOperation {
+                                path: op.from.clone(),
+                                value: moved,
+                            }));
+                            undo_stack.push(PatchOperation::Replace(ReplaceOperation {
+                                path: op.path.clone(),
+                                value: prev,
+                            }));
+                        }
+                        prev => {
+                            if let Some(prev) = prev {
+                                undo_stack.push(PatchOperation::Add(AddOperation {
+                                    path: op.path.clone(),
+                                    value: prev,
+                                }));
+                            }
+                            undo_stack.push(PatchOperation::Move(MoveOperation {
+                                from: op.path.clone(),
+                                path: op.from.clone(),
+                            }));
+                        }
                     }
-                    undo_stack.push(PatchOperation::Move(MoveOperation {
-                        from: op.path.clone(),
-                        path: op.from.clone(),
-                    }));
                 }
             }
             PatchOperation::Copy(ref op) => {
