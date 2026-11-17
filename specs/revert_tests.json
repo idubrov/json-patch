@@ -210,6 +210,71 @@
     "error": "invalid pointer"
   },
   {
+    "comment": "Can revert move (move into parent key)",
+    "doc": {
+      "foo": {
+        "bar": {
+          "baz": true
+        }
+      }
+    },
+    "patch": [
+      {
+        "op": "move",
+        "path": "/foo",
+        "from": "/foo/bar"
+      },
+      {
+        "op": "remove",
+        "path": "/foo/bar"
+      }
+    ],
+    "error": "invalid pointer"
+  },
+  {
+    "comment": "Can revert move (move into parent array element)",
+    "doc": {
+      "foo": [
+        {
+          "bar": 1
+        },
+        2
+      ]
+    },
+    "patch": [
+      {
+        "op": "move",
+        "path": "/foo/0",
+        "from": "/foo/0/bar"
+      },
+      {
+        "op": "remove",
+        "path": "/foo/bar"
+      }
+    ],
+    "error": "invalid pointer"
+  },
+  {
+    "comment": "Can revert move (move into root)",
+    "doc": {
+      "foo": {
+        "bar": 1
+      }
+    },
+    "patch": [
+      {
+        "op": "move",
+        "path": "",
+        "from": "/foo/bar"
+      },
+      {
+        "op": "remove",
+        "path": "/foo/bar"
+      }
+    ],
+    "error": "invalid pointer"
+  },
+  {
     "comment": "Can revert copy (copy into key)",
     "doc": {
       "foo": {
