@@ -64,11 +64,13 @@ jobs:
         run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml
 
       - name: Codecov
-        uses: codecov/codecov-action@v3.1.4
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           verbose: true
-          fail_ci_if_error: true
+          # PRs from forks get no secrets and fall back to a tokenless upload, which
+          # Codecov may reject or rate-limit; don't fail the build over it.
+          fail_ci_if_error: ${{ !github.event.pull_request.head.repo.fork }}
 
   lints:
     name: Lints
