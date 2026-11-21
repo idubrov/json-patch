@@ -1,6 +1,6 @@
 [
   {
-    "comment": "1. introduction",
+    "comment": "rfc7396-section-1:0 (section 1 worked example)",
     "doc": {
       "a": "b",
       "c": {
@@ -23,7 +23,7 @@
     "merge": true
   },
   {
-    "comment": "3. example",
+    "comment": "rfc7396-section-3:0 (section 3 worked example)",
     "doc": {
       "title": "Goodbye!",
       "author": {
@@ -88,5 +88,695 @@
       "content": "This will be unchanged"
     },
     "merge": true
+  },
+  {
+    "comment": "rfc7396-appendix-a:0 (row 1: replace member)",
+    "doc": {
+      "a": "b"
+    },
+    "patch": {
+      "a": "c"
+    },
+    "expected": {
+      "a": "c"
+    }
+  },
+  {
+    "comment": "rfc7396-appendix-a:1 (row 2: add member)",
+    "doc": {
+      "a": "b"
+    },
+    "patch": {
+      "b": "c"
+    },
+    "expected": {
+      "a": "b",
+      "b": "c"
+    }
+  },
+  {
+    "comment": "rfc7396-appendix-a:2 (row 3: delete member)",
+    "doc": {
+      "a": "b"
+    },
+    "patch": {
+      "a": null
+    },
+    "expected": {}
+  },
+  {
+    "comment": "rfc7396-appendix-a:3 (row 4: delete one member)",
+    "doc": {
+      "a": "b",
+      "b": "c"
+    },
+    "patch": {
+      "a": null
+    },
+    "expected": {
+      "b": "c"
+    }
+  },
+  {
+    "comment": "rfc7396-appendix-a:4 (row 5: replace array member with scalar)",
+    "doc": {
+      "a": [
+        "b"
+      ]
+    },
+    "patch": {
+      "a": "c"
+    },
+    "expected": {
+      "a": "c"
+    }
+  },
+  {
+    "comment": "rfc7396-appendix-a:5 (row 6: replace scalar member with array)",
+    "doc": {
+      "a": "c"
+    },
+    "patch": {
+      "a": [
+        "b"
+      ]
+    },
+    "expected": {
+      "a": [
+        "b"
+      ]
+    }
+  },
+  {
+    "comment": "rfc7396-appendix-a:6 (row 7: recursive update and delete)",
+    "doc": {
+      "a": {
+        "b": "c"
+      }
+    },
+    "patch": {
+      "a": {
+        "b": "d",
+        "c": null
+      }
+    },
+    "expected": {
+      "a": {
+        "b": "d"
+      }
+    }
+  },
+  {
+    "comment": "rfc7396-appendix-a:7 (row 8: replace array of objects)",
+    "doc": {
+      "a": [
+        {
+          "b": "c"
+        }
+      ]
+    },
+    "patch": {
+      "a": [
+        1
+      ]
+    },
+    "expected": {
+      "a": [
+        1
+      ]
+    }
+  },
+  {
+    "comment": "rfc7396-appendix-a:8 (row 9: array patch replaces target)",
+    "doc": [
+      "a",
+      "b"
+    ],
+    "patch": [
+      "c",
+      "d"
+    ],
+    "expected": [
+      "c",
+      "d"
+    ]
+  },
+  {
+    "comment": "rfc7396-appendix-a:9 (row 10: array patch replaces object)",
+    "doc": {
+      "a": "b"
+    },
+    "patch": [
+      "c"
+    ],
+    "expected": [
+      "c"
+    ]
+  },
+  {
+    "comment": "rfc7396-appendix-a:10 (row 11: null patch replaces target)",
+    "doc": {
+      "a": "foo"
+    },
+    "patch": null,
+    "expected": null
+  },
+  {
+    "comment": "rfc7396-appendix-a:11 (row 12: scalar patch replaces target)",
+    "doc": {
+      "a": "foo"
+    },
+    "patch": "bar",
+    "expected": "bar"
+  },
+  {
+    "comment": "rfc7396-appendix-a:12 (row 13: retain target null)",
+    "doc": {
+      "e": null
+    },
+    "patch": {
+      "a": 1
+    },
+    "expected": {
+      "e": null,
+      "a": 1
+    }
+  },
+  {
+    "comment": "rfc7396-appendix-a:13 (row 14: object patch replaces non-object target)",
+    "doc": [
+      1,
+      2
+    ],
+    "patch": {
+      "a": "b",
+      "c": null
+    },
+    "expected": {
+      "a": "b"
+    }
+  },
+  {
+    "comment": "rfc7396-appendix-a:14 (row 15: recursive creation and null deletion)",
+    "doc": {},
+    "patch": {
+      "a": {
+        "bb": {
+          "ccc": null
+        }
+      }
+    },
+    "expected": {
+      "a": {
+        "bb": {}
+      }
+    }
+  },
+  {
+    "comment": "rfc7396-section-2-derived:0 (derived directly from section 2 pseudocode: empty object patch)",
+    "doc": {
+      "keep": 1,
+      "nested": {
+        "x": 2
+      }
+    },
+    "patch": {},
+    "expected": {
+      "keep": 1,
+      "nested": {
+        "x": 2
+      }
+    }
+  },
+  {
+    "comment": "rfc7396-section-2-derived:1 (derived directly from section 2 pseudocode: object patch initializes non-object target)",
+    "doc": [
+      "discard"
+    ],
+    "patch": {
+      "a": 1
+    },
+    "expected": {
+      "a": 1
+    }
+  },
+  {
+    "comment": "rfc7396-section-2-derived:2 (derived section 2 object update with Unicode member name)",
+    "doc": {
+      "label": "old",
+      "雪": {
+        "city": "A"
+      }
+    },
+    "patch": {
+      "label": "new",
+      "雪": {
+        "city": "東京"
+      }
+    },
+    "expected": {
+      "label": "new",
+      "雪": {
+        "city": "東京"
+      }
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:0 (TestMergePatchReplaceKey)",
+    "doc": {
+      "title": "hello"
+    },
+    "patch": {
+      "title": "goodbye"
+    },
+    "expected": {
+      "title": "goodbye"
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:1 (TestMergePatchIgnoresOtherValues)",
+    "doc": {
+      "title": "hello",
+      "age": 18
+    },
+    "patch": {
+      "title": "goodbye"
+    },
+    "expected": {
+      "title": "goodbye",
+      "age": 18
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:2 (TestMergePatchNilDoc)",
+    "doc": {
+      "title": null
+    },
+    "patch": {
+      "title": {
+        "foo": "bar"
+      }
+    },
+    "expected": {
+      "title": {
+        "foo": "bar"
+      }
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:3 (TestMergePatchNilArray case 0)",
+    "doc": {
+      "a": [
+        {
+          "b": "c"
+        }
+      ]
+    },
+    "patch": {
+      "a": [
+        1
+      ]
+    },
+    "expected": {
+      "a": [
+        1
+      ]
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:4 (TestMergePatchNilArray case 1)",
+    "doc": {
+      "a": [
+        {
+          "b": "c"
+        }
+      ]
+    },
+    "patch": {
+      "a": [
+        null,
+        1
+      ]
+    },
+    "expected": {
+      "a": [
+        null,
+        1
+      ]
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:5 (TestMergePatchNilArray case 2)",
+    "doc": [
+      "a",
+      null
+    ],
+    "patch": [
+      null
+    ],
+    "expected": [
+      null
+    ]
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:6 (TestMergePatchNilArray case 3)",
+    "doc": [
+      "a"
+    ],
+    "patch": [
+      null
+    ],
+    "expected": [
+      null
+    ]
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:7 (TestMergePatchNilArray case 4)",
+    "doc": [
+      "a",
+      "b"
+    ],
+    "patch": [
+      "a",
+      null
+    ],
+    "expected": [
+      "a",
+      null
+    ]
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:8 (TestMergePatchNilArray case 5)",
+    "doc": {
+      "a": [
+        "b"
+      ]
+    },
+    "patch": {
+      "a": [
+        "b",
+        null
+      ]
+    },
+    "expected": {
+      "a": [
+        "b",
+        null
+      ]
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:9 (TestMergePatchNilArray case 6)",
+    "doc": {
+      "a": []
+    },
+    "patch": {
+      "a": [
+        "b",
+        null,
+        null,
+        "a"
+      ]
+    },
+    "expected": {
+      "a": [
+        "b",
+        null,
+        null,
+        "a"
+      ]
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:10 (TestMergePatchRecursesIntoObjects)",
+    "doc": {
+      "person": {
+        "title": "hello",
+        "age": 18
+      }
+    },
+    "patch": {
+      "person": {
+        "title": "goodbye"
+      }
+    },
+    "expected": {
+      "person": {
+        "title": "goodbye",
+        "age": 18
+      }
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:11 (TestMergePatchReplacesNonObjectsWholesale case 0)",
+    "doc": [
+      1
+    ],
+    "patch": [
+      2
+    ],
+    "expected": [
+      2
+    ]
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:12 (TestMergePatchReplacesNonObjectsWholesale case 1)",
+    "doc": {
+      "a": 1
+    },
+    "patch": [
+      2
+    ],
+    "expected": [
+      2
+    ]
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:13 (TestMergePatchReplacesNonObjectsWholesale case 2)",
+    "doc": [
+      1
+    ],
+    "patch": {
+      "a": 1
+    },
+    "expected": {
+      "a": 1
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:14 (TestMergePatchReplacesNonObjectsWholesale case 3)",
+    "doc": {
+      "a": 1,
+      "b": 1
+    },
+    "patch": {
+      "a": 2
+    },
+    "expected": {
+      "a": 2,
+      "b": 1
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:15 (TestMergePatchReturnsEmptyArrayOnEmptyArray)",
+    "doc": {
+      "array": [
+        "one",
+        "two"
+      ]
+    },
+    "patch": {
+      "array": []
+    },
+    "expected": {
+      "array": []
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:16 (TestMergePatchRFCCases case 0)",
+    "doc": {
+      "a": "b"
+    },
+    "patch": {
+      "a": "c"
+    },
+    "expected": {
+      "a": "c"
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:17 (TestMergePatchRFCCases case 1)",
+    "doc": {
+      "a": "b"
+    },
+    "patch": {
+      "b": "c"
+    },
+    "expected": {
+      "a": "b",
+      "b": "c"
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:18 (TestMergePatchRFCCases case 2)",
+    "doc": {
+      "a": "b"
+    },
+    "patch": {
+      "a": null
+    },
+    "expected": {}
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:19 (TestMergePatchRFCCases case 3)",
+    "doc": {
+      "a": "b",
+      "b": "c"
+    },
+    "patch": {
+      "a": null
+    },
+    "expected": {
+      "b": "c"
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:20 (TestMergePatchRFCCases case 4)",
+    "doc": {
+      "a": [
+        "b"
+      ]
+    },
+    "patch": {
+      "a": "c"
+    },
+    "expected": {
+      "a": "c"
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:21 (TestMergePatchRFCCases case 5)",
+    "doc": {
+      "a": "c"
+    },
+    "patch": {
+      "a": [
+        "b"
+      ]
+    },
+    "expected": {
+      "a": [
+        "b"
+      ]
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:22 (TestMergePatchRFCCases case 6)",
+    "doc": {
+      "a": {
+        "b": "c"
+      }
+    },
+    "patch": {
+      "a": {
+        "b": "d",
+        "c": null
+      }
+    },
+    "expected": {
+      "a": {
+        "b": "d"
+      }
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:23 (TestMergePatchRFCCases case 7)",
+    "doc": {
+      "a": [
+        {
+          "b": "c"
+        }
+      ]
+    },
+    "patch": {
+      "a": [
+        1
+      ]
+    },
+    "expected": {
+      "a": [
+        1
+      ]
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:24 (TestMergePatchRFCCases case 8)",
+    "doc": [
+      "a",
+      "b"
+    ],
+    "patch": [
+      "c",
+      "d"
+    ],
+    "expected": [
+      "c",
+      "d"
+    ]
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:25 (TestMergePatchRFCCases case 9)",
+    "doc": {
+      "a": "b"
+    },
+    "patch": [
+      "c"
+    ],
+    "expected": [
+      "c"
+    ]
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:26 (TestMergePatchRFCCases case 10)",
+    "doc": {
+      "e": null
+    },
+    "patch": {
+      "a": 1
+    },
+    "expected": {
+      "a": 1,
+      "e": null
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:27 (TestMergePatchRFCCases case 11)",
+    "doc": [
+      1,
+      2
+    ],
+    "patch": {
+      "a": "b",
+      "c": null
+    },
+    "expected": {
+      "a": "b"
+    }
+  },
+  {
+    "comment": "evanphx-json-patch-v4.13.0-merge_test.go:28 (TestMergePatchRFCCases case 12)",
+    "doc": {},
+    "patch": {
+      "a": {
+        "bb": {
+          "ccc": null
+        }
+      }
+    },
+    "expected": {
+      "a": {
+        "bb": {}
+      }
+    }
   }
 ]
