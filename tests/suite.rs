@@ -1,5 +1,5 @@
 use json_patch::Patch;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 
 #[test]
@@ -56,10 +56,18 @@ struct PatchTestCase {
     comment: Option<String>,
     doc: Value,
     patch: Value,
+    #[serde(default, deserialize_with = "deserialize_expected")]
     expected: Option<Value>,
     error: Option<String>,
     #[serde(default)]
     disabled: bool,
+}
+
+fn deserialize_expected<'de, D>(deserializer: D) -> Result<Option<Value>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Value::deserialize(deserializer).map(Some)
 }
 
 fn run_patch_test_case(tc: &PatchTestCase, kind: PatchKind) -> Result<Value, String> {
