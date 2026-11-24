@@ -602,8 +602,10 @@ fn apply_patches(
                     .map_err(|e| translate_error(e, operation, &op.path))?;
                 if let Some(&mut ref mut undo_stack) = undo_stack {
                     match prev {
-                        // `from` lived inside `prev`, so restore `prev` before re-adding the value
-                        Some(prev) if op.from.starts_with(&op.path) => {
+                        // `path` is only valid while the value is not at `from` (`from` may live
+                        // inside `prev`, or may shift array indexes in `path`), so restore `prev`
+                        // before re-adding the value
+                        Some(prev) => {
                             let moved = doc
                                 .pointer(op.path.as_str())
                                 .cloned()
@@ -617,13 +619,7 @@ fn apply_patches(
                                 value: prev,
                             }));
                         }
-                        prev => {
-                            if let Some(prev) = prev {
-                                undo_stack.push(PatchOperation::Add(AddOperation {
-                                    path: op.path.clone(),
-                                    value: prev,
-                                }));
-                            }
+                        None => {
                             undo_stack.push(PatchOperation::Move(MoveOperation {
                                 from: op.path.clone(),
                                 path: op.from.clone(),

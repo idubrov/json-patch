@@ -257,6 +257,30 @@
     "error": "invalid pointer"
   },
   {
+    "comment": "Can revert move (replace existing value, removal shifts indexes of the path)",
+    "doc": [
+      1,
+      {
+        "foo": 2
+      },
+      {
+        "foo": 3
+      }
+    ],
+    "patch": [
+      {
+        "op": "move",
+        "path": "/1/foo",
+        "from": "/0"
+      },
+      {
+        "op": "remove",
+        "path": "/5"
+      }
+    ],
+    "error": "invalid pointer"
+  },
+  {
     "comment": "Can revert move (move into parent key)",
     "doc": {
       "foo": {
