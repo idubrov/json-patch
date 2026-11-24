@@ -338,23 +338,40 @@ fn translate_error(kind: PatchErrorKind, operation: usize, path: &Pointer) -> Pa
 }
 
 fn add(doc: &mut Value, path: &Pointer, value: Value) -> Result<Option<Value>, PatchErrorKind> {
+    try_add(doc, path, value).map_err(|(err, _)| err)
+}
+
+/// Same as `add`, but gives the value back when it cannot be added.
+fn try_add(
+    doc: &mut Value,
+    path: &Pointer,
+    value: Value,
+) -> Result<Option<Value>, (PatchErrorKind, Value)> {
     let Some((parent, last)) = path.split_back() else {
         // empty path, add is replace the value wholesale
         return Ok(Some(std::mem::replace(doc, value)));
     };
 
-    let mut parent = doc
-        .pointer_mut(parent.as_str())
-        .ok_or(PatchErrorKind::InvalidPointer)?;
+    let Some(parent) = doc.pointer_mut(parent.as_str()) else {
+        return Err((PatchErrorKind::InvalidPointer, value));
+    };
 
-    match &mut parent {
+    match parent {
         Value::Object(obj) => Ok(obj.insert(last.decoded().into_owned(), value)),
         Value::Array(arr) => {
-            let idx = last.to_index()?.for_len_incl(arr.len())?;
-            arr.insert(idx, value);
-            Ok(None)
+            let idx = last
+                .to_index()
+                .map_err(PatchErrorKind::from)
+                .and_then(|idx| Ok(idx.for_len_incl(arr.len())?));
+            match idx {
+                Ok(idx) => {
+                    arr.insert(idx, value);
+                    Ok(None)
+                }
+                Err(err) => Err((err, value)),
+            }
         }
-        _ => Err(PatchErrorKind::InvalidPointer),
+        _ => Err((PatchErrorKind::InvalidPointer, value)),
     }
 }
 
@@ -399,7 +416,11 @@ fn mov(doc: &mut Value, from: &Pointer, path: &Pointer) -> Result<Option<Value>,
         PatchErrorKind::InvalidPointer => PatchErrorKind::InvalidFromPointer,
         err => err,
     })?;
-    add(doc, path, val)
+    try_add(doc, path, val).map_err(|(err, val)| {
+        // Put the value back, the undo stack doesn't know about a move that failed
+        add(doc, from, val).expect("the value was just removed from `from`");
+        err
+    })
 }
 
 fn copy(doc: &mut Value, from: &Pointer, path: &Pointer) -> Result<Option<Value>, PatchErrorKind> {
