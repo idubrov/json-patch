@@ -210,6 +210,77 @@
     "error": "invalid pointer"
   },
   {
+    "comment": "Can revert failed move (missing parent)",
+    "doc": {
+      "foo": 1
+    },
+    "patch": [
+      {
+        "op": "move",
+        "path": "/bar/baz",
+        "from": "/foo"
+      }
+    ],
+    "error": "invalid pointer"
+  },
+  {
+    "comment": "Can revert failed move (array index out of bounds)",
+    "doc": {
+      "foo": [1, 2, 3]
+    },
+    "patch": [
+      {
+        "op": "move",
+        "path": "/foo/3",
+        "from": "/foo/0"
+      }
+    ],
+    "error": "invalid pointer"
+  },
+  {
+    "comment": "Can revert failed move (value added by the same patch)",
+    "doc": {
+      "foo": 1
+    },
+    "patch": [
+      {
+        "op": "add",
+        "path": "/bar",
+        "value": 2
+      },
+      {
+        "op": "move",
+        "path": "/foo/baz",
+        "from": "/bar"
+      }
+    ],
+    "error": "invalid pointer"
+  },
+  {
+    "comment": "Can revert move (replace existing value, removal shifts indexes of the path)",
+    "doc": [
+      1,
+      {
+        "foo": 2
+      },
+      {
+        "foo": 3
+      }
+    ],
+    "patch": [
+      {
+        "op": "move",
+        "path": "/1/foo",
+        "from": "/0"
+      },
+      {
+        "op": "remove",
+        "path": "/5"
+      }
+    ],
+    "error": "invalid pointer"
+  },
+  {
     "comment": "Can revert move (move into parent key)",
     "doc": {
       "foo": {
